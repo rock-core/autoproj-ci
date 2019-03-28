@@ -38,8 +38,12 @@ module Autoproj
             def cache_push(dir)
                 packages = resolve_packages
 
+                built = load_built_flags
+
                 memo   = Hash.new
                 packages.map do |pkg|
+                    next unless built[pkg.name]
+
                     state, fingerprint = push_package_to_cache(dir, pkg, memo: memo)
 
                     {
@@ -48,7 +52,7 @@ module Autoproj
                             'fingerprint' => fingerprint
                         }
                     }
-                end
+                end.compact
             end
 
             def package_cache_path(dir, pkg, fingerprint: nil, memo: {})
@@ -84,6 +88,14 @@ module Autoproj
 
                 FileUtils.mv temppath, path
                 [true, fingerprint]
+            end
+
+            def load_built_flags
+                report = JSON.load(File.read(@ws.build_report_path))
+                report['build_report']['packages'].
+                    each_with_object({}) do |pkg_report, h|
+                        h[pkg_report['name']] = pkg_report['built']
+                    end
             end
         end
     end

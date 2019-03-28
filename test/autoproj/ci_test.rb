@@ -12,6 +12,8 @@ module Autoproj::CLI
             flexmock(@pkg.autobuild).
                 should_receive(:fingerprint).and_return("TEST")
             @cli = CI.new(@ws)
+
+            make_build_report
         end
 
         describe "pull" do
@@ -46,6 +48,22 @@ module Autoproj::CLI
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert_equal "prefix", File.read(
                     File.join(@archive_dir, @pkg.name, "contents"))
+            end
+            it "ignores packages which were not in the last build" do
+                File.open(@ws.build_report_path, 'w') do |io|
+                    JSON.dump({'build_report' => { 'packages' => [] }}, io)
+                end
+
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                results = @cli.cache_push(@archive_dir)
+                assert results.empty?, results
+            end
+            it "ignores packages which were not built in the last build" do
+                make_build_report 'built' => false
+
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                results = @cli.cache_push(@archive_dir)
+                assert results.empty?, results
             end
             it "ignores packages that are already in the cache" do
                 make_archive("a", "TEST")
@@ -112,6 +130,19 @@ module Autoproj::CLI
 
             File.open(path, 'w') do |archive_io|
                 archive_io.write gziped_archive
+            end
+        end
+
+        def make_build_report(status = Hash.new)
+            FileUtils.mkdir_p File.dirname(@ws.build_report_path)
+            File.open(@ws.build_report_path, 'w') do |io|
+                JSON.dump({
+                    'build_report' => {
+                        "packages": [
+                            {"name": "a", "built": true}.merge(status)
+                        ]
+                    }
+                }, io)
             end
         end
     end
