@@ -20,6 +20,12 @@ module Autoproj
                     report = options.delete(:report)
 
                     results = cli.cache_pull(*dir, silent: false, **options)
+
+                    if report && !report.empty?
+                        File.open(report, 'w') do |io|
+                            JSON.dump(results, io)
+                        end
+                    end
                 end
             end
 
@@ -40,6 +46,12 @@ module Autoproj
                     report = options.delete(:report)
 
                     results = cli.cache_push(*dir, silent: false, **options)
+
+                    if report && !report.empty?
+                        File.open(report, 'w') do |io|
+                            JSON.dump(results, io)
+                        end
+                    end
                 end
             end
         end
