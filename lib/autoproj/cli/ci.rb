@@ -1,4 +1,3 @@
-require 'autoproj'
 require 'autoproj/cli/inspection_tool'
 
 module Autoproj
