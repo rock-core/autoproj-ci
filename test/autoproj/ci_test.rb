@@ -114,6 +114,54 @@ module Autoproj::CLI
             end
         end
 
+        describe "report" do
+            it "saves a consolidated manifest in report.json" do
+                make_cache_pull
+                make_build_report('some' => 'flag')
+                make_installation_manifest
+                @cli.build_report(dir = make_tmpdir)
+                report = JSON.load(File.read(File.join(dir, 'report.json')))
+                assert_equal({'a' => {
+                    'cached' => true, 'built' => true, 'some' => 'flag'
+                }}, report)
+            end
+            it "ignores an absent cache pull report" do
+                make_build_report('some' => 'flag')
+                make_installation_manifest
+                @cli.build_report(dir = make_tmpdir)
+                report = JSON.load(File.read(File.join(dir, 'report.json')))
+                assert_equal({'a' => {
+                    'built' => true, 'some' => 'flag'
+                }}, report)
+            end
+            it "copies each package log directory contents to logs/" do
+                make_installation_manifest
+
+                logdir = make_tmpdir
+                # the CLI loads the environment, which resets logdir
+                # Force the return value
+                flexmock(@pkg.autobuild, logdir: logdir)
+                FileUtils.mkdir_p File.join(logdir, 'some', 'dir')
+                FileUtils.touch File.join(logdir, 'some', 'dir', 'contents')
+                @cli.build_report(dir = make_tmpdir)
+                assert File.file?(File.join(dir, 'logs', 'some', 'dir', 'contents'))
+            end
+            it "does not copy the toplevel log/ directory" do
+                make_installation_manifest
+
+                logdir = make_tmpdir
+                # the CLI loads the environment, which resets logdir
+                # Force the return value
+                flexmock(@pkg.autobuild, logdir: logdir)
+                FileUtils.mkdir_p File.join(logdir, 'some', 'dir')
+                FileUtils.touch File.join(logdir, 'some', 'dir', 'contents')
+                dir = make_tmpdir
+                FileUtils.mkdir_p File.join(dir, 'logs')
+                @cli.build_report(dir)
+                assert File.file?(File.join(dir, 'logs', 'some', 'dir', 'contents'))
+            end
+        end
+
         def make_git(dir, file_content: File.basename(dir))
             FileUtils.mkdir_p dir
             system("git", "init", chdir: dir)
@@ -162,6 +210,19 @@ module Autoproj::CLI
                     }
                 }, io)
             end
+        end
+
+        def make_cache_pull(cached = true)
+            File.open(File.join(@ws.root_dir, 'cache-pull.json'), 'w') do |io|
+                JSON.dump({ 'a' => { 'cached' => cached } }, io)
+            end
+        end
+
+        def make_installation_manifest
+            manifest = Autoproj::InstallationManifest.new(
+                @ws.installation_manifest_path)
+            manifest.add_package(@pkg)
+            manifest.save
         end
     end
 end

@@ -74,6 +74,21 @@ module Autoproj
                     end
                 end
             end
+
+            desc "build-report PATH",
+                "Create a tarball containing all the information about this "\
+                "build, such as cache information (from cache-pull), Autoproj\'s "\
+                "build report and installation manifest, and the package\'s logfiles"
+            def build_report(path)
+                path = File.expand_path(path)
+
+                require 'autoproj/cli/ci'
+                Autoproj.report(silent: true) do
+                    cli = CI.new
+                    args, options = cli.validate_options(path, self.options)
+                    cli.build_report(*args, **options)
+                end
+            end
         end
     end
 end

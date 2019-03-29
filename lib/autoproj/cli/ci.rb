@@ -1,4 +1,5 @@
 require 'autoproj/cli/inspection_tool'
+require 'tmpdir'
 
 module Autoproj
     module CLI
@@ -67,6 +68,32 @@ module Autoproj
                 results
             end
 
+            # Build a report in a given directory
+            #
+            # The method itself will not archive the directory, only gather the
+            # information in a consistent way
+            def build_report(dir)
+                initialize_and_load
+                finalize_setup([], non_imported_packages: :ignore)
+
+                report = consolidated_report
+                FileUtils.mkdir_p dir
+                File.open(File.join(dir, 'report.json'), 'w') do |io|
+                    JSON.dump(report, io)
+                end
+
+                installation_manifest = InstallationManifest.
+                    from_workspace_root(@ws.root_dir)
+                logs = File.join(dir, 'logs')
+                # Pre-create the logs, or cp_r will have a different behavior
+                # if the directory exists or not
+                FileUtils.mkdir_p logs
+                installation_manifest.each_package do |pkg|
+                    glob = Dir.glob(File.join(pkg.logdir, '*'))
+                    FileUtils.cp_r(glob, logs) if File.directory?(pkg.logdir)
+                end
+            end
+
             def package_cache_path(dir, pkg, fingerprint: nil, memo: {})
                 fingerprint ||= pkg.fingerprint(memo: memo)
                 File.join(dir, pkg.name, fingerprint)
@@ -108,6 +135,23 @@ module Autoproj
                     each_with_object({}) do |pkg_report, h|
                         h[pkg_report['name']] = pkg_report['built']
                     end
+            end
+
+            def consolidated_report
+                cache_pull = File.join(@ws.root_dir, 'cache-pull.json')
+                report = if File.file?(cache_pull)
+                    JSON.load(File.read(cache_pull))
+                else
+                    {}
+                end
+
+                build_report = JSON.load(File.read(@ws.build_report_path))
+                packages = build_report['build_report']['packages']
+                packages.each_with_object({}) do |pkg_info, h|
+                    name = pkg_info.delete('name')
+                    h[name] = report[name] || {}
+                    h[name].merge!(pkg_info)
+                end
             end
         end
     end
