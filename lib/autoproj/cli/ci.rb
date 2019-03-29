@@ -23,8 +23,6 @@ module Autoproj
 
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
-                    next if pkg.srcdir == pkg.prefix
-
                     state, fingerprint = pull_package_from_cache(dir, pkg, memo: memo)
                     puts "pulled #{pkg.name} (#{fingerprint})" if state && !silent
 
@@ -49,7 +47,6 @@ module Autoproj
 
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
-                    next if pkg.srcdir == pkg.prefix
                     next unless built[pkg.name]
 
                     state, fingerprint = push_package_to_cache(dir, pkg, memo: memo)
