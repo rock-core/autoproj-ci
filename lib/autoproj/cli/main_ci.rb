@@ -14,8 +14,10 @@ module Autoproj
                 require 'autoproj/cli/ci'
                 Autoproj.report(silent: true) do
                     cli = CI.new
-                    args, options = cli.validate_options(dir, **options)
-                    cli.cache_pull(*dir, **options)
+                    args, options = cli.validate_options(dir, self.options)
+                    report = options.delete(:report)
+
+                    results = cli.cache_pull(*dir, silent: false, **options)
                 end
             end
 
@@ -29,8 +31,11 @@ module Autoproj
                 require 'autoproj/cli/ci'
                 Autoproj.report(silent: true) do
                     cli = CI.new
-                    args, options = cli.validate_options(dir, **options)
-                    cli.cache_push(*dir, **options)
+
+                    args, options = cli.validate_options(dir, self.options)
+                    report = options.delete(:report)
+
+                    results = cli.cache_push(*dir, silent: false, **options)
                 end
             end
         end

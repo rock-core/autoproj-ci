@@ -35,6 +35,15 @@ module Autoproj::CLI
 
                 refute File.directory?(@pkg.autobuild.prefix)
             end
+            it "optionally reports its progress" do
+                make_archive("a", "TEST")
+
+                flexmock(@cli).should_receive(:puts).explicitly.once.
+                    with("pulled a (TEST)")
+                @cli.should_receive(:puts).explicitly.once.
+                    with("1 hits, 0 misses")
+                @cli.cache_pull(@archive_dir, silent: false)
+            end
         end
 
         describe "push" do
@@ -92,6 +101,16 @@ module Autoproj::CLI
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert %w[archive prefix].include?(File.read(
                     File.join(@archive_dir, @pkg.name, "contents")))
+            end
+
+            it "optionally reports its progress" do
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+
+                flexmock(@cli).should_receive(:puts).explicitly.once.
+                    with("pushed a (TEST)")
+                @cli.should_receive(:puts).explicitly.once.
+                    with("1 updated packages, 0 reused entries")
+                @cli.cache_push(@archive_dir, silent: false)
             end
         end
 

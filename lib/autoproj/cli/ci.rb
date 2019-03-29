@@ -18,12 +18,13 @@ module Autoproj
                 end
             end
 
-            def cache_pull(dir)
+            def cache_pull(dir, silent: true)
                 packages = resolve_packages
 
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
                     state, fingerprint = pull_package_from_cache(dir, pkg, memo: memo)
+                    puts "pulled #{pkg.name} (#{fingerprint})" if state && !silent
 
                     h[pkg.name] = {
                         'cached' => state,
@@ -31,10 +32,15 @@ module Autoproj
                     }
                 end
 
+                unless silent
+                    hit = results.count { |_, info| info['cached'] }
+                    puts "#{hit} hits, #{results.size - hit} misses"
+                end
+
                 results
             end
 
-            def cache_push(dir)
+            def cache_push(dir, silent: true)
                 packages = resolve_packages
 
                 built = load_built_flags
@@ -44,12 +50,18 @@ module Autoproj
                     next unless built[pkg.name]
 
                     state, fingerprint = push_package_to_cache(dir, pkg, memo: memo)
+                    puts "pushed #{pkg.name} (#{fingerprint})" if state && !silent
 
 
                     h[pkg.name] = {
                         'updated' => state,
                         'fingerprint' => fingerprint
                     }
+                end
+
+                unless silent
+                    hit = results.count { |_, info| info['updated'] }
+                    puts "#{hit} updated packages, #{results.size - hit} reused entries"
                 end
 
                 results
