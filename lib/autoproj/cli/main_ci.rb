@@ -11,6 +11,8 @@ module Autoproj
             option :report, type: 'string', default: 'cache-pull.json',
                 desc: 'a file which describes what has been done'
             def cache_pull(dir)
+                dir = File.expand_path(dir)
+
                 require 'autoproj/cli/ci'
                 Autoproj.report(silent: true) do
                     cli = CI.new
@@ -28,6 +30,8 @@ module Autoproj
             option :report, type: 'string', default: 'cache-push.json',
                 desc: 'a file which describes what has been done'
             def cache_push(dir)
+                dir = File.expand_path(dir)
+
                 require 'autoproj/cli/ci'
                 Autoproj.report(silent: true) do
                     cli = CI.new
