@@ -6,7 +6,7 @@
 Run
 
 ~~~
-autoproj plugin enable autoproj-ci
+autoproj plugin install autoproj-ci
 ~~~
 
 From within an autoproj workspace
@@ -38,7 +38,7 @@ handled by the tools
 Install the plugin with a `--path` option to use your working checkout
 
 ~~~
-autoproj plugin enable autoproj-ci --path /path/to/checkout
+autoproj plugin install autoproj-ci --path /path/to/checkout
 ~~~
 
 ## Contributing
