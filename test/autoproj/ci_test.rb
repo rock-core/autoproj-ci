@@ -21,18 +21,17 @@ module Autoproj::CLI
                 make_archive("a", "TEST")
 
                 results = @cli.cache_pull(@archive_dir)
-                assert_equal ["a" => {'cached' => true, 'fingerprint' => 'TEST'}],
-                    results
+                assert_equal({ "a" => {'cached' => true, 'fingerprint' => 'TEST'} },
+                    results)
 
                 contents = File.read(File.join(@pkg.autobuild.prefix, 'contents'))
                 assert_equal 'archive', contents.strip
             end
-
             it "ignores packages that are not already in the cache" do
                 cli = CI.new(@ws)
                 results = cli.cache_pull(@archive_dir)
-                assert_equal ["a" => {'cached' => false, 'fingerprint' => 'TEST'}],
-                    results
+                assert_equal({ "a" => {'cached' => false, 'fingerprint' => 'TEST'} },
+                    results)
 
                 refute File.directory?(@pkg.autobuild.prefix)
             end
@@ -42,8 +41,8 @@ module Autoproj::CLI
             it "pushes packages that are not already in the cache" do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
-                assert_equal ["a" => {'updated' => true, 'fingerprint' => 'TEST'}],
-                    results
+                assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
+                    results)
 
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert_equal "prefix", File.read(
@@ -69,8 +68,8 @@ module Autoproj::CLI
                 make_archive("a", "TEST")
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
-                assert_equal ["a" => {'updated' => false, 'fingerprint' => 'TEST'}],
-                    results
+                assert_equal({ "a" => {'updated' => false, 'fingerprint' => 'TEST'} },
+                    results)
 
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert_equal "archive", File.read(
@@ -87,8 +86,8 @@ module Autoproj::CLI
                     end
 
                 results = @cli.cache_push(@archive_dir)
-                assert_equal ["a" => {'updated' => true, 'fingerprint' => 'TEST'}],
-                    results
+                assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
+                    results)
 
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert %w[archive prefix].include?(File.read(

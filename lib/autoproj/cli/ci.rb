@@ -22,16 +22,16 @@ module Autoproj
                 packages = resolve_packages
 
                 memo   = Hash.new
-                packages.map do |pkg|
+                results = packages.each_with_object({}) do |pkg, h|
                     state, fingerprint = pull_package_from_cache(dir, pkg, memo: memo)
 
-                    {
-                        pkg.name => {
-                            'cached' => state,
-                            'fingerprint' => fingerprint
-                        }
+                    h[pkg.name] = {
+                        'cached' => state,
+                        'fingerprint' => fingerprint
                     }
                 end
+
+                results
             end
 
             def cache_push(dir)
@@ -40,18 +40,19 @@ module Autoproj
                 built = load_built_flags
 
                 memo   = Hash.new
-                packages.map do |pkg|
+                results = packages.each_with_object({}) do |pkg, h|
                     next unless built[pkg.name]
 
                     state, fingerprint = push_package_to_cache(dir, pkg, memo: memo)
 
-                    {
-                        pkg.name => {
-                            'updated' => state,
-                            'fingerprint' => fingerprint
-                        }
+
+                    h[pkg.name] = {
+                        'updated' => state,
+                        'fingerprint' => fingerprint
                     }
-                end.compact
+                end
+
+                results
             end
 
             def package_cache_path(dir, pkg, fingerprint: nil, memo: {})
