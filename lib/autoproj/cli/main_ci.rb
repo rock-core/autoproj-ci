@@ -4,6 +4,24 @@ module Autoproj
     module CLI
         # CLI interface for autoproj-ci
         class MainCI < Thor
+            desc 'build [ARGS]', "Just like autoproj build, but can use a build cache"
+            option :cache, type: 'string',
+                desc: 'path to the build cache'
+            option :report, type: 'string', default: 'cache-pull.json',
+                desc: 'a file which describes what has been pulled'
+            def build(*args)
+                if (cache = options.delete(:cache))
+                    cache = File.expand_path(cache)
+                    results = cache_pull(cache)
+                    pulled_packages = results.
+                        map { |name, pkg| name if pkg['cached'] }.
+                        compact
+                    not_args = ['--not', *pulled_packages] unless pulled_packages.empty?
+                end
+
+                Process.exec(Gem.ruby, $PROGRAM_NAME, 'build', "--interactive=f", *args, *not_args)
+            end
+
             desc 'cache-pull CACHE_DIR',
                 "This command gets relevant artifacts from a build cache and "\
                 "populates the current workspace's prefix with them. It is meant "\
@@ -14,6 +32,7 @@ module Autoproj
                 dir = File.expand_path(dir)
 
                 require 'autoproj/cli/ci'
+                results = nil
                 Autoproj.report(silent: true) do
                     cli = CI.new
                     args, options = cli.validate_options(dir, self.options)
@@ -27,6 +46,7 @@ module Autoproj
                         end
                     end
                 end
+                results
             end
 
             desc 'cache-push CACHE_DIR',

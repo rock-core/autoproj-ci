@@ -15,12 +15,13 @@ From within an autoproj workspace
 
 ### Build cache
 
-The `autoproj ci cache-push` and `autoproj ci cache-pull` subcommands allow you
-to save build artifacts (push) or get them from the cache (pull) to avoid
-re-building things that are not needed. The pull must be done after a
-successful bootstrap and checkout of the workspace. The push after a build.
-`cache-push` will automatically ignore packages whose build have failed,
-**from the last build**. So, make sure to run it after a complete build.
+The `autoproj ci cache-push`, `autoproj ci build` and `autoproj ci
+cache-pull` subcommands allow you to save build artifacts (push) or get them
+from the cache (pull and build) to avoid re-building things that are not
+needed. The pull may be used to unarchive the relevant artifacts from the
+archive dir into the workspace's prefix. `build` does `cache-pull` and
+triggers a build that will ignore the cached packages. `cache-push` updates
+the cache using the packages successfully build by the last build command.
 
 `cache-pull` generates a JSON file that can be used to determine what has been
 pulled from the cache. Cached packages can then be provided to the `--not` option
