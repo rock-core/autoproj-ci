@@ -44,6 +44,12 @@ module Autoproj::CLI
                     with("1 hits, 0 misses")
                 @cli.cache_pull(@archive_dir, silent: false)
             end
+            it "ignores packages that do not have build artifacts" do
+                # CLI resets prefix ... force the issue
+                flexmock(@pkg.autobuild).should_receive(prefix: @pkg.autobuild.srcdir)
+                results = @cli.cache_pull(@archive_dir)
+                assert results.empty?
+            end
         end
 
         describe "push" do
@@ -111,6 +117,12 @@ module Autoproj::CLI
                 @cli.should_receive(:puts).explicitly.once.
                     with("1 updated packages, 0 reused entries")
                 @cli.cache_push(@archive_dir, silent: false)
+            end
+            it "ignores packages that do not have build artifacts" do
+                # CLI resets prefix ... force the issue
+                flexmock(@pkg.autobuild).should_receive(prefix: @pkg.autobuild.srcdir)
+                results = @cli.cache_push(@archive_dir)
+                assert results.empty?
             end
         end
 
