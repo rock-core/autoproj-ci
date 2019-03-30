@@ -130,7 +130,10 @@ module Autoproj
             end
 
             def load_built_flags
-                report = JSON.load(File.read(@ws.build_report_path))
+                path = @ws.build_report_path
+                return {} unless File.file?(path)
+
+                report = JSON.load(File.read(path))
                 report['build_report']['packages'].
                     each_with_object({}) do |pkg_report, h|
                         h[pkg_report['name']] = pkg_report['built']

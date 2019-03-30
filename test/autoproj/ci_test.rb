@@ -57,6 +57,11 @@ module Autoproj::CLI
                 assert_equal "prefix", File.read(
                     File.join(@archive_dir, @pkg.name, "contents"))
             end
+            it "does nothing if there is no build report" do
+                FileUtils.rm_f @ws.build_report_path
+                results = @cli.cache_push(@archive_dir)
+                assert results.empty?
+            end
             it "ignores packages which were not in the last build" do
                 File.open(@ws.build_report_path, 'w') do |io|
                     JSON.dump({'build_report' => { 'packages' => [] }}, io)
