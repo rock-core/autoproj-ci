@@ -48,7 +48,10 @@ module Autoproj
 
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
-                    next unless built[pkg.name]
+                    unless built[pkg.name]
+                        puts "skipped #{pkg.name}: not built or already cached"
+                        next
+                    end
 
                     state, fingerprint = push_package_to_cache(dir, pkg, memo: memo)
                     puts "pushed #{pkg.name} (#{fingerprint})" if state && !silent
@@ -102,20 +105,27 @@ module Autoproj
             def pull_package_from_cache(dir, pkg, memo: {})
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
-                return [false, fingerprint] unless File.file?(path)
+                unless File.file?(path)
+                    puts "#{path} does not exist"
+                    return [false, fingerprint]
+                end
 
                 FileUtils.mkdir_p pkg.prefix
                 result = system("tar", "xzf", path, chdir: pkg.prefix, out: '/dev/null')
                 unless result
                     raise "tar failed when pulling cache file for #{pkg.name}"
                 end
+                puts "pulled #{path}"
                 [true, pkg.fingerprint(memo: memo)]
             end
 
             def push_package_to_cache(dir, pkg, memo: {})
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
-                return [false, fingerprint] if File.file?(path)
+                if File.file?(path)
+                    puts "#{path} already exists"
+                    return [false, fingerprint]
+                end
 
                 temppath = "#{path}.#{Process.pid}.#{rand(256)}"
                 FileUtils.mkdir_p File.dirname(path)
@@ -126,6 +136,7 @@ module Autoproj
                 end
 
                 FileUtils.mv temppath, path
+                puts "created #{path} from #{temppath}"
                 [true, fingerprint]
             end
 
