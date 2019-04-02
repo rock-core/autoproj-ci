@@ -161,11 +161,12 @@ module Autoproj
 
                 build_report = JSON.load(File.read(@ws.build_report_path))
                 packages = build_report['build_report']['packages']
-                packages.each_with_object({}) do |pkg_info, h|
+                packages = packages.each_with_object({}) do |pkg_info, h|
                     name = pkg_info.delete('name')
                     h[name] = report[name] || {}
                     h[name].merge!(pkg_info)
                 end
+                { 'packages' => packages }
             end
         end
     end
