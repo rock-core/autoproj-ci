@@ -173,7 +173,7 @@ module Autoproj
 
                 packages = packages.each_with_object({}) do |pkg_info, h|
                     name = pkg_info.delete('name')
-                    h[name] = cache_report[name] || {}
+                    h[name] = cache_report[name] || { 'cached' => false }
                     h[name].merge!(pkg_info)
                 end
                 { 'packages' => packages }

@@ -152,7 +152,7 @@ module Autoproj::CLI
                 @cli.build_report(dir = make_tmpdir)
                 report = JSON.load(File.read(File.join(dir, 'report.json')))
                 assert_equal({'a' => {
-                    'built' => true, 'some' => 'flag'
+                    'cached' => false, 'built' => true, 'some' => 'flag'
                 }}, report)
             end
             it "copies each package log directory contents to logs/" do
