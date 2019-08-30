@@ -12,11 +12,13 @@ module Autoproj::CLI
             flexmock(@pkg.autobuild).
                 should_receive(:fingerprint).and_return("TEST")
             @cli = CI.new(@ws)
-
-            make_build_report
         end
 
         describe "pull" do
+            before do
+                make_build_report
+            end
+
             it "pulls already built packages from the cache" do
                 make_archive("a", "TEST")
 
@@ -47,6 +49,10 @@ module Autoproj::CLI
         end
 
         describe "push" do
+            before do
+                make_build_report
+            end
+
             it "pushes packages that are not already in the cache" do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
@@ -120,24 +126,34 @@ module Autoproj::CLI
         end
 
         describe "report" do
+            it "uses the import report if the build report is not available" do
+                make_cache_pull
+                make_import_report('some' => 'flag')
+                make_installation_manifest
+                @cli.build_report(dir = make_tmpdir)
+                report = JSON.load(File.read(File.join(dir, 'report.json')))
+                assert_equal({'packages' => {'a' => {
+                    'cached' => true, 'built' => true, 'some' => 'flag'
+                }}}, report)
+            end
             it "saves a consolidated manifest in report.json" do
                 make_cache_pull
                 make_build_report('some' => 'flag')
                 make_installation_manifest
                 @cli.build_report(dir = make_tmpdir)
                 report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({'a' => {
+                assert_equal({'packages' => {'a' => {
                     'cached' => true, 'built' => true, 'some' => 'flag'
-                }}, report)
+                }}}, report)
             end
             it "ignores an absent cache pull report" do
                 make_build_report('some' => 'flag')
                 make_installation_manifest
                 @cli.build_report(dir = make_tmpdir)
                 report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({'a' => {
-                    'built' => true, 'some' => 'flag'
-                }}, report)
+                assert_equal({'packages' => {'a' => {
+                    'cached' => false, 'built' => true, 'some' => 'flag'
+                }}}, report)
             end
             it "copies each package log directory contents to logs/" do
                 make_installation_manifest
@@ -204,11 +220,20 @@ module Autoproj::CLI
             end
         end
 
+        def make_import_report(status = Hash.new)
+            make_report('import_report', status)
+        end
+
         def make_build_report(status = Hash.new)
-            FileUtils.mkdir_p File.dirname(@ws.build_report_path)
-            File.open(@ws.build_report_path, 'w') do |io|
+            make_report('build_report', status)
+        end
+
+        def make_report(type, status = Hash.new)
+            path = @ws.send("#{type}_path")
+            FileUtils.mkdir_p File.dirname(path)
+            File.open(path, 'w') do |io|
                 JSON.dump({
-                    'build_report' => {
+                    type => {
                         "packages": [
                             {"name": "a", "built": true}.merge(status)
                         ]

@@ -49,7 +49,6 @@ module Autoproj
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
                     unless built[pkg.name]
-                        puts "skipped #{pkg.name}: not built or already cached"
                         next
                     end
 
@@ -106,7 +105,6 @@ module Autoproj
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
                 unless File.file?(path)
-                    puts "#{path} does not exist"
                     return [false, fingerprint]
                 end
 
@@ -115,7 +113,6 @@ module Autoproj
                 unless result
                     raise "tar failed when pulling cache file for #{pkg.name}"
                 end
-                puts "pulled #{path}"
                 [true, pkg.fingerprint(memo: memo)]
             end
 
@@ -123,7 +120,6 @@ module Autoproj
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
                 if File.file?(path)
-                    puts "#{path} already exists"
                     return [false, fingerprint]
                 end
 
@@ -136,7 +132,6 @@ module Autoproj
                 end
 
                 FileUtils.mv temppath, path
-                puts "created #{path} from #{temppath}"
                 [true, fingerprint]
             end
 
@@ -153,17 +148,27 @@ module Autoproj
 
             def consolidated_report
                 cache_pull = File.join(@ws.root_dir, 'cache-pull.json')
-                report = if File.file?(cache_pull)
+                cache_report = if File.file?(cache_pull)
                     JSON.load(File.read(cache_pull))
                 else
                     {}
                 end
 
-                build_report = JSON.load(File.read(@ws.build_report_path))
-                packages = build_report['build_report']['packages']
+                packages =
+                    if File.file?(@ws.build_report_path)
+                        path = @ws.build_report_path
+                        report = JSON.load(File.read(path))
+                        report['build_report']['packages']
+                    elsif File.file?(@ws.import_report_path)
+                        path = @ws.import_report_path
+                        report = JSON.load(File.read(path))
+                        report['import_report']['packages']
+                    end
+                return unless packages
+
                 packages = packages.each_with_object({}) do |pkg_info, h|
                     name = pkg_info.delete('name')
-                    h[name] = report[name] || {}
+                    h[name] = cache_report[name] || { 'cached' => false }
                     h[name].merge!(pkg_info)
                 end
                 { 'packages' => packages }

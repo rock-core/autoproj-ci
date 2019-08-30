@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem 'autoproj', path: '/home/doudou/dev/gems/autoproj'
+gem 'autoproj', git: 'https://github.com/rock-core/autoproj'
 group :vscode do
     gem 'pry'
     gem 'pry-byebug'
