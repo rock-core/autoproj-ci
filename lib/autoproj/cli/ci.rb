@@ -153,17 +153,27 @@ module Autoproj
 
             def consolidated_report
                 cache_pull = File.join(@ws.root_dir, 'cache-pull.json')
-                report = if File.file?(cache_pull)
+                cache_report = if File.file?(cache_pull)
                     JSON.load(File.read(cache_pull))
                 else
                     {}
                 end
 
-                build_report = JSON.load(File.read(@ws.build_report_path))
-                packages = build_report['build_report']['packages']
+                packages =
+                    if File.file?(@ws.build_report_path)
+                        path = @ws.build_report_path
+                        report = JSON.load(File.read(path))
+                        report['build_report']['packages']
+                    elsif File.file?(@ws.import_report_path)
+                        path = @ws.import_report_path
+                        report = JSON.load(File.read(path))
+                        report['import_report']['packages']
+                    end
+                return unless packages
+
                 packages = packages.each_with_object({}) do |pkg_info, h|
                     name = pkg_info.delete('name')
-                    h[name] = report[name] || {}
+                    h[name] = cache_report[name] || {}
                     h[name].merge!(pkg_info)
                 end
                 { 'packages' => packages }
