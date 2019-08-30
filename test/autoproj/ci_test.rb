@@ -142,18 +142,18 @@ module Autoproj::CLI
                 make_installation_manifest
                 @cli.build_report(dir = make_tmpdir)
                 report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({'a' => {
+                assert_equal({'packages' => {'a' => {
                     'cached' => true, 'built' => true, 'some' => 'flag'
-                }}, report)
+                }}}, report)
             end
             it "ignores an absent cache pull report" do
                 make_build_report('some' => 'flag')
                 make_installation_manifest
                 @cli.build_report(dir = make_tmpdir)
                 report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({'a' => {
+                assert_equal({'packages' => {'a' => {
                     'cached' => false, 'built' => true, 'some' => 'flag'
-                }}, report)
+                }}}, report)
             end
             it "copies each package log directory contents to logs/" do
                 make_installation_manifest
