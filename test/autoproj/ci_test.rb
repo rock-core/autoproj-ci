@@ -29,6 +29,15 @@ module Autoproj::CLI
                 contents = File.read(File.join(@pkg.autobuild.prefix, 'contents'))
                 assert_equal 'archive', contents.strip
             end
+           it "does not pull an already built package specified in ignore" do
+                make_archive("a", "TEST")
+
+                results = @cli.cache_pull(@archive_dir, ignore: ['a'])
+                assert_equal({ "a" => {'cached' => false, 'fingerprint' => 'TEST'} },
+                    results)
+
+                refute File.directory?(@pkg.autobuild.prefix)
+            end
             it "ignores packages that are not already in the cache" do
                 cli = CI.new(@ws)
                 results = cli.cache_pull(@archive_dir)
@@ -93,6 +102,17 @@ module Autoproj::CLI
 
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert_equal "archive", File.read(
+                    File.join(@archive_dir, @pkg.name, "contents"))
+            end
+            it "pushes a package that is already in the cache if it is listed in 'force'" do
+                make_archive("a", "TEST")
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                results = @cli.cache_push(@archive_dir, force: ['a'])
+                assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
+                    results)
+
+                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal "prefix", File.read(
                     File.join(@archive_dir, @pkg.name, "contents"))
             end
             it "deals with race conditions on push" do

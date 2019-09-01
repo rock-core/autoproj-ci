@@ -7,12 +7,14 @@ module Autoproj
             desc 'build [ARGS]', "Just like autoproj build, but can use a build cache"
             option :cache, type: 'string',
                 desc: 'path to the build cache'
+            option :cache_ignore, type: :array, default: [],
+                desc: 'list of packages to not pull from cache'
             option :report, type: 'string', default: 'cache-pull.json',
                 desc: 'a file which describes what has been pulled'
             def build(*args)
                 if (cache = options.delete(:cache))
                     cache = File.expand_path(cache)
-                    results = cache_pull(cache)
+                    results = cache_pull(cache, ignore: options.delete(:cache_ignore))
                     pulled_packages = results.
                         map { |name, pkg| name if pkg['cached'] }.
                         compact
@@ -28,7 +30,9 @@ module Autoproj
                 "to be executed after a full checkout of the workspace"
             option :report, type: 'string', default: 'cache-pull.json',
                 desc: 'a file which describes what has been done'
-            def cache_pull(dir)
+            option :ignore, type: :array, default: [],
+                desc: 'list of packages to not pull from cache'
+            def cache_pull(dir, ignore: [])
                 dir = File.expand_path(dir)
 
                 require 'autoproj/cli/ci'
@@ -38,7 +42,10 @@ module Autoproj
                     args, options = cli.validate_options(dir, self.options)
                     report = options.delete(:report)
 
-                    results = cli.cache_pull(*dir, silent: false, **options)
+                    # options[:ignore] is not set if we call from another
+                    # command, e.g. build
+                    ignore = ignore + (options.delete(:ignore) || [])
+                    results = cli.cache_pull(*dir, silent: false, ignore: ignore, **options)
 
                     if report && !report.empty?
                         File.open(report, 'w') do |io|
@@ -55,6 +62,8 @@ module Autoproj
                 "cache-pull"
             option :report, type: 'string', default: 'cache-push.json',
                 desc: 'a file which describes what has been done'
+            option :force, type: :array, default: [],
+                desc: 'push these packages even if it appears a cache entry exists for them'
             def cache_push(dir)
                 dir = File.expand_path(dir)
 
