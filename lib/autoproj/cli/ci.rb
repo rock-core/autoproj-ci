@@ -33,13 +33,13 @@ module Autoproj
                         next
                     end
 
-                    state, fingerprint = pull_package_from_cache(dir, pkg, memo: memo)
+                    state, fingerprint, metadata = pull_package_from_cache(dir, pkg, memo: memo)
                     puts "pulled #{pkg.name} (#{fingerprint})" if state && !silent
 
-                    h[pkg.name] = {
+                    h[pkg.name] = metadata.merge(
                         'cached' => state,
                         'fingerprint' => fingerprint
-                    }
+                    )
                 end
 
                 unless silent
@@ -52,19 +52,17 @@ module Autoproj
 
             def cache_push(dir, force: [], silent: true)
                 packages = resolve_packages
-
-                built = load_built_flags
+                metadata = consolidated_report['packages']
 
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
-                    unless built[pkg.name]
-                        next
-                    end
+                    next unless (pkg_metadata = metadata[pkg.name])
+                    next unless pkg_metadata['built']
 
                     state, fingerprint = push_package_to_cache(
-                        dir, pkg, force: force.include?(pkg.name), memo: memo)
+                        dir, pkg, pkg_metadata,
+                        force: force.include?(pkg.name), memo: memo)
                     puts "pushed #{pkg.name} (#{fingerprint})" if state && !silent
-
 
                     h[pkg.name] = {
                         'updated' => state,
@@ -115,33 +113,46 @@ module Autoproj
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
                 unless File.file?(path)
-                    return [false, fingerprint]
+                    return [false, fingerprint, {}]
                 end
+
+                path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
+
+                metadata_path = "#{path}.yml"
+                metadata = YAML.load(File.read(metadata_path)) if File.file?(metadata_path)
+                # Upgrade from caches that did not have metadata
+                metadata ||= {}
 
                 FileUtils.mkdir_p pkg.prefix
                 result = system("tar", "xzf", path, chdir: pkg.prefix, out: '/dev/null')
                 unless result
                     raise "tar failed when pulling cache file for #{pkg.name}"
                 end
-                [true, pkg.fingerprint(memo: memo)]
+                [true, pkg.fingerprint(memo: memo), metadata]
             end
 
-            def push_package_to_cache(dir, pkg, force: false, memo: {})
+            def push_package_to_cache(dir, pkg, metadata, force: false, memo: {})
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
+                temppath = "#{path}.#{Process.pid}.#{rand(256)}"
+
+                FileUtils.mkdir_p File.dirname(path)
+                if force || !File.file?("#{path}.yml")
+                    File.open(temppath, 'w') { |io| YAML.dump(metadata, io) }
+                    FileUtils.mv temppath, "#{path}.yml"
+                end
+
                 if !force && File.file?(path)
                     return [false, fingerprint]
                 end
 
-                temppath = "#{path}.#{Process.pid}.#{rand(256)}"
-                FileUtils.mkdir_p File.dirname(path)
                 result = system("tar", "czf", temppath, ".",
                     chdir: pkg.prefix, out: '/dev/null')
                 unless result
                     raise "tar failed when pushing cache file for #{pkg.name}"
                 end
-
                 FileUtils.mv temppath, path
+
                 [true, fingerprint]
             end
 
@@ -157,31 +168,45 @@ module Autoproj
             end
 
             def consolidated_report
-                cache_pull = File.join(@ws.root_dir, 'cache-pull.json')
-                cache_report = if File.file?(cache_pull)
-                    JSON.load(File.read(cache_pull))
+                cache_pull_report = File.join(@ws.root_dir, 'cache-pull.json')
+                cache_report = if File.file?(cache_pull_report)
+                    JSON.load(File.read(cache_pull_report))
                 else
                     {}
                 end
 
-                packages =
-                    if File.file?(@ws.build_report_path)
-                        path = @ws.build_report_path
-                        report = JSON.load(File.read(path))
-                        report['build_report']['packages']
-                    elsif File.file?(@ws.import_report_path)
-                        path = @ws.import_report_path
-                        report = JSON.load(File.read(path))
-                        report['import_report']['packages']
-                    end
-                return unless packages
+                reports = { @ws.import_report_path => 'import_report',
+                            @ws.build_report_path  => 'build_report',
+                            @ws.utility_report_path('test') => ['test_report', 'test'] }
 
-                packages = packages.each_with_object({}) do |pkg_info, h|
-                    name = pkg_info.delete('name')
-                    h[name] = cache_report[name] || { 'cached' => false }
-                    h[name].merge!(pkg_info)
+                packages = reports.map do |path, (toplevel, new_toplevel)|
+                    next({}) unless File.file?(path)
+
+                    report = JSON.load(File.read(path))
+                    [report[toplevel]['packages'], new_toplevel]
                 end
-                { 'packages' => packages }
+
+                result = cache_report.dup
+                packages.each do |set, new_toplevel|
+                    set.each do |info|
+                        name = info.delete('name')
+                        result[name] ||= {}
+
+                        target =
+                            if new_toplevel
+                                result[name][new_toplevel] ||= {}
+                            else
+                                result[name]
+                            end
+                        target.merge!(info)
+                    end
+                end
+
+                result.each_value do |pkg_info|
+                    pkg_info['cached'] ||= false
+                end
+
+                { 'packages' => result }
             end
         end
     end
