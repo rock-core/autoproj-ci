@@ -24,6 +24,28 @@ module Autoproj
                 Process.exec(Gem.ruby, $PROGRAM_NAME, 'build', "--interactive=f", *args, *not_args)
             end
 
+            desc 'test [ARGS]', "Like autoproj test, but avoid re-testing packages that have not been updated"
+            option :cache, type: 'string',
+                desc: 'path to the build cache'
+            option :cache_ignore, type: :array, default: [],
+                desc: 'list of packages which should always be considered out-of-date'
+            def test(*args)
+                if (cache = options.delete(:cache))
+                    cache = File.expand_path(cache)
+
+                    require 'autoproj/cli/ci'
+                    cli = CI.new
+                    cli.validate_options([], self.options)
+                    results = cli.cache_state(cache, ignore: options.delete(:cache_ignore))
+                    updated_packages = results.
+                        map { |name, pkg| name if pkg['cached'] }.
+                        compact
+                    not_args = ['--not', *updated_packages] unless updated_packages.empty?
+                end
+
+                Process.exec(Gem.ruby, $PROGRAM_NAME, 'test', 'exec', '--interactive=f', *args, *not_args)
+            end
+
             desc 'status DIR', "Display the cache status"
             option :cache, type: 'string',
                 desc: 'path to the build cache'
