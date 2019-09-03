@@ -66,6 +66,32 @@ module Autoproj::CLI
             end
         end
 
+        describe "#cache_state" do
+            it "determines if a cache entry can be used" do
+                make_archive("a", "TEST")
+                make_metadata("a", "TEST", timestamp: (time = Time.now))
+
+                results = @cli.cache_state(@archive_dir)
+                assert_equal({
+                    "a" => {
+                        'path' => File.join(@archive_dir, 'a', 'TEST'),
+                        'cached' => true, 'metadata' => true, 'fingerprint' => 'TEST',
+                    },
+                }, results)
+            end
+
+            it "determines if there are no cache entries" do
+                cli = CI.new(@ws)
+                results = cli.cache_state(@archive_dir)
+                assert_equal({
+                    'a' => {
+                        'path' => File.join(@archive_dir, 'a', 'TEST'),
+                        'cached' => false, 'metadata' => false, 'fingerprint' => 'TEST'
+                    }
+                }, results)
+            end
+        end
+
         describe "push" do
             before do
                 make_build_report

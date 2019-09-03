@@ -19,6 +19,20 @@ module Autoproj
                 end
             end
 
+            def cache_state(dir, ignore: [], silent: true)
+                packages = resolve_packages
+
+                memo   = Hash.new
+                packages.each_with_object({}) do |pkg, h|
+                    state = package_cache_state(dir, pkg, memo: memo)
+                    if ignore.include?(pkg.name)
+                        state = state.merge('cached' => false, 'metadata' => false)
+                    end
+
+                    h[pkg.name] = state
+                end
+            end
+
             def cache_pull(dir, ignore: [], silent: true)
                 packages = resolve_packages
 
@@ -109,6 +123,18 @@ module Autoproj
             def package_cache_path(dir, pkg, fingerprint: nil, memo: {})
                 fingerprint ||= pkg.fingerprint(memo: memo)
                 File.join(dir, pkg.name, fingerprint)
+            end
+
+            def package_cache_state(dir, pkg, memo: {})
+                fingerprint = pkg.fingerprint(memo: memo)
+                path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
+
+                {
+                    'path' => path,
+                    'cached' => File.file?(path),
+                    'metadata' => File.file?("#{path}.json"),
+                    'fingerprint' => fingerprint
+                }
             end
 
             def pull_package_from_cache(dir, pkg, memo: {})

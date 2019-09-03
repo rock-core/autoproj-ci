@@ -24,6 +24,28 @@ module Autoproj
                 Process.exec(Gem.ruby, $PROGRAM_NAME, 'build', "--interactive=f", *args, *not_args)
             end
 
+            desc 'status DIR', "Display the cache status"
+            option :cache, type: 'string',
+                desc: 'path to the build cache'
+            def status(dir)
+                cache = File.expand_path(dir)
+                require 'autoproj/cli/ci'
+                cli = CI.new
+                args, options = cli.validate_options(dir, self.options)
+                results = cli.cache_state(cache)
+                results.keys.sort.each do |name|
+                    status = results[name]
+                    fields = []
+                    if status['cached']
+                        fields << Autoproj.color('cache hit', :green)
+                    else
+                        fields << Autoproj.color('cache miss', :red)
+                    end
+                    fields << "fingerprint=#{status['fingerprint']}"
+                    puts "#{name}: #{fields.join(', ')}"
+                end
+            end
+
             desc 'cache-pull CACHE_DIR',
                 "This command gets relevant artifacts from a build cache and "\
                 "populates the current workspace's prefix with them. It is meant "\
