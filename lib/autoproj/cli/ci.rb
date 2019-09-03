@@ -120,8 +120,8 @@ module Autoproj
 
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
 
-                metadata_path = "#{path}.yml"
-                metadata = YAML.load(File.read(metadata_path)) if File.file?(metadata_path)
+                metadata_path = "#{path}.json"
+                metadata = JSON.load(File.read(metadata_path)) if File.file?(metadata_path)
                 # Upgrade from caches that did not have metadata
                 metadata ||= {}
 
@@ -139,9 +139,9 @@ module Autoproj
                 temppath = "#{path}.#{Process.pid}.#{rand(256)}"
 
                 FileUtils.mkdir_p File.dirname(path)
-                if force || !File.file?("#{path}.yml")
-                    File.open(temppath, 'w') { |io| YAML.dump(metadata, io) }
-                    FileUtils.mv temppath, "#{path}.yml"
+                if force || !File.file?("#{path}.json")
+                    File.open(temppath, 'w') { |io| JSON.dump(metadata, io) }
+                    FileUtils.mv temppath, "#{path}.json"
                 end
 
                 if !force && File.file?(path)

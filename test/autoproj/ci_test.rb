@@ -78,8 +78,8 @@ module Autoproj::CLI
                 assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
                     results)
 
-                metadata = YAML.safe_load(
-                    File.read(File.join(@archive_dir, @pkg.name, "TEST.yml"))
+                metadata = JSON.load(
+                    File.read(File.join(@archive_dir, @pkg.name, "TEST.json"))
                 )
                 assert_equal({
                     'build' => { 'invoked' => true, 'success' => true,
@@ -132,15 +132,15 @@ module Autoproj::CLI
                 make_archive("a", "TEST")
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 make_build_report(add: { 'some' => 'flag' }, timestamp: (time = Time.now))
-                File.open(File.join(@archive_dir, @pkg.name, "TEST.yml"), 'w') do |io|
+                File.open(File.join(@archive_dir, @pkg.name, "TEST.json"), 'w') do |io|
                     io.write "something"
                 end
                 results = @cli.cache_push(@archive_dir, force: ['a'])
                 assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
                     results)
 
-                metadata = YAML.safe_load(
-                    File.read(File.join(@archive_dir, @pkg.name, "TEST.yml"))
+                metadata = JSON.load(
+                    File.read(File.join(@archive_dir, @pkg.name, "TEST.json"))
                 )
                 assert_equal({
                     'build' => { 'invoked' => true, 'success' => true,
@@ -368,11 +368,11 @@ module Autoproj::CLI
         end
 
         def make_metadata(package_name, fingerprint, add: {}, timestamp: Time.now)
-            path = File.join(@archive_dir, package_name, "#{fingerprint}.yml")
+            path = File.join(@archive_dir, package_name, "#{fingerprint}.json")
             FileUtils.mkdir_p File.dirname(path)
 
             File.open(path, 'w') do |io|
-                YAML.dump({
+                JSON.dump({
                     'build' => { 'timestamp' => timestamp.to_s, 'invoked' => true }.merge(add)
                 }, io)
             end
