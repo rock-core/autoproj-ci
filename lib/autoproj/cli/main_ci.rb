@@ -49,7 +49,11 @@ module Autoproj
 
                     if report && !report.empty?
                         File.open(report, 'w') do |io|
-                            JSON.dump(results, io)
+                            JSON.dump({
+                                'cache_pull_report' => {
+                                    'packages' => results
+                                }
+                            }, io)
                         end
                     end
                 end
@@ -78,7 +82,11 @@ module Autoproj
 
                     if report && !report.empty?
                         File.open(report, 'w') do |io|
-                            JSON.dump(results, io)
+                            JSON.dump({
+                                'cache_push_report' => {
+                                    'packages' => results
+                                }
+                            }, io)
                         end
                     end
                 end
@@ -88,14 +96,14 @@ module Autoproj
                 "Create a tarball containing all the information about this "\
                 "build, such as cache information (from cache-pull), Autoproj\'s "\
                 "build report and installation manifest, and the package\'s logfiles"
-            def build_report(path)
+            def create_report(path)
                 path = File.expand_path(path)
 
                 require 'autoproj/cli/ci'
                 Autoproj.report(silent: true) do
                     cli = CI.new
                     args, options = cli.validate_options(path, self.options)
-                    cli.build_report(*args, **options)
+                    cli.create_report(*args, **options)
                 end
             end
         end

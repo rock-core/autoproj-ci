@@ -57,7 +57,8 @@ module Autoproj
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
                     next unless (pkg_metadata = metadata[pkg.name])
-                    next unless pkg_metadata['built']
+                    next unless pkg_metadata['build']
+                    next unless pkg_metadata['build']['success']
 
                     state, fingerprint = push_package_to_cache(
                         dir, pkg, pkg_metadata,
@@ -82,7 +83,7 @@ module Autoproj
             #
             # The method itself will not archive the directory, only gather the
             # information in a consistent way
-            def build_report(dir)
+            def create_report(dir)
                 initialize_and_load
                 finalize_setup([], non_imported_packages: :ignore)
 
@@ -167,45 +168,35 @@ module Autoproj
                     end
             end
 
+            def load_report(path, root_name, default: { 'packages' => {} })
+                return default unless File.file?(path)
+                JSON.load(File.read(path)).fetch(root_name)
+            end
+
             def consolidated_report
-                cache_pull_report = File.join(@ws.root_dir, 'cache-pull.json')
-                cache_report = if File.file?(cache_pull_report)
-                    JSON.load(File.read(cache_pull_report))
-                else
-                    {}
-                end
+                new_reports = {
+                    'import' => @ws.import_report_path,
+                    'build' => @ws.build_report_path,
+                    'test' => @ws.utility_report_path('test')
+                }
 
-                reports = { @ws.import_report_path => 'import_report',
-                            @ws.build_report_path  => 'build_report',
-                            @ws.utility_report_path('test') => ['test_report', 'test'] }
+                # We start with the cached info (if any) and override with
+                # information from the other phase reports
+                cache_report_path = File.join(@ws.root_dir, 'cache-pull.json')
+                result = load_report(cache_report_path, 'cache_pull_report')['packages']
 
-                packages = reports.map do |path, (toplevel, new_toplevel)|
-                    next({}) unless File.file?(path)
+                new_reports.each do |phase_name, path|
+                    report = load_report(path, "#{phase_name}_report")
+                    packages = report['packages']
+                    timestamp = report['timestamp']
 
-                    report = JSON.load(File.read(path))
-                    [report[toplevel]['packages'], new_toplevel]
-                end
-
-                result = cache_report.dup
-                packages.each do |set, new_toplevel|
-                    set.each do |info|
-                        name = info.delete('name')
-                        result[name] ||= {}
-
-                        target =
-                            if new_toplevel
-                                result[name][new_toplevel] ||= {}
-                            else
-                                result[name]
-                            end
-                        target.merge!(info)
+                    report['packages'].each do |pkg_name, pkg_info|
+                        result[pkg_name] ||= { 'cached' => false }
+                        result[pkg_name][phase_name] = pkg_info.merge(
+                            'timestamp' => report['timestamp']
+                        )
                     end
                 end
-
-                result.each_value do |pkg_info|
-                    pkg_info['cached'] ||= false
-                end
-
                 { 'packages' => result }
             end
         end

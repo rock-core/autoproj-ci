@@ -1,5 +1,6 @@
 require "test_helper"
 require 'rubygems/package'
+require 'timecop'
 
 module Autoproj::CLI
     describe CI do
@@ -77,6 +78,12 @@ module Autoproj::CLI
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?
             end
+            it "does nothing if there is a report but it contains no build info" do
+                FileUtils.rm_f @ws.build_report_path
+                make_import_report
+                results = @cli.cache_push(@archive_dir)
+                assert results.empty?
+            end
             it "ignores packages which were not in the last build" do
                 File.open(@ws.build_report_path, 'w') do |io|
                     JSON.dump({'build_report' => { 'packages' => [] }}, io)
@@ -87,11 +94,12 @@ module Autoproj::CLI
                 assert results.empty?, results
             end
             it "ignores packages which were not built in the last build" do
-                make_build_report 'built' => false
+                make_build_report add: { 'success' => false }
 
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
-                assert results.empty?, results
+                assert results.empty?, "packages were pushed that should "\
+                                       "not have: #{results}"
             end
             it "ignores packages that are already in the cache" do
                 make_archive("a", "TEST")
@@ -146,34 +154,126 @@ module Autoproj::CLI
         end
 
         describe "report" do
-            it "uses the import report if the build report is not available" do
-                make_cache_pull
-                make_import_report('some' => 'flag')
-                make_installation_manifest
-                @cli.build_report(dir = make_tmpdir)
-                report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({'packages' => {'a' => {
-                    'cached' => true, 'built' => true, 'some' => 'flag'
-                }}}, report)
+            before do
+                Timecop.freeze
             end
+            after do
+                Timecop.return
+            end
+
+            def self.consolidated_report_single_behavior(report_type, report_path_accessor: )
+                it "reads the #{report_type} report" do
+                    make_report("#{report_type}_report",
+                                add: { 'some' => 'flag' },
+                                path: report_path_accessor.(@ws))
+                    make_installation_manifest
+                    @cli.create_report(dir = make_tmpdir)
+                    report = JSON.load(File.read(File.join(dir, 'report.json')))
+                    assert_equal({
+                        'packages' => {
+                            'a' => {
+                                'cached' => false,
+                                report_type => {
+                                    'invoked' => true,
+                                    'success' => true,
+                                    'some' => 'flag',
+                                    'timestamp' => Time.now.to_s
+                                }
+                            }
+                        }
+                    }, report)
+                end
+                it "keeps cached #{report_type} info if there is no new info in the #{report_type} report" do
+                    make_cache_pull(true, report_type => { 'invoked' => false })
+                    make_installation_manifest
+                    @cli.create_report(dir = make_tmpdir)
+                    report = JSON.load(File.read(File.join(dir, 'report.json')))
+                    assert_equal({
+                        'packages' => {
+                            'a' => {
+                                'cached' => true,
+                                report_type => {
+                                    'invoked' => false
+                                }
+                            }
+                        }
+                    }, report)
+                end
+                it "overwrites cache info with entries from the import report" do
+                    make_cache_pull(true, report_type => { 'invoked' => false })
+                    make_report("#{report_type}_report",
+                                add: { 'some' => 'flag' },
+                                path: report_path_accessor.(@ws))
+                    make_installation_manifest
+                    @cli.create_report(dir = make_tmpdir)
+                    report = JSON.load(File.read(File.join(dir, 'report.json')))
+                    assert_equal({
+                        'packages' => {
+                            'a' => {
+                                'cached' => true,
+                                report_type => {
+                                    'invoked' => true,
+                                    'success' => true,
+                                    'some' => 'flag',
+                                    'timestamp' => Time.now.to_s
+                                }
+                            }
+                        }
+                    }, report)
+                end
+            end
+
+            consolidated_report_single_behavior(
+                'import', report_path_accessor: ->(ws) { ws.import_report_path }
+            )
+            consolidated_report_single_behavior(
+                'build', report_path_accessor: ->(ws) { ws.build_report_path }
+            )
+            consolidated_report_single_behavior(
+                'test', report_path_accessor: ->(ws) { ws.utility_report_path('test') }
+            )
+
+
             it "saves a consolidated manifest in report.json" do
                 make_cache_pull
-                make_build_report('some' => 'flag')
+                make_import_report(add: { 'some' => 'flag' }, timestamp: Time.now)
+                make_build_report(add: { 'some' => 'other' }, timestamp: Time.now + 1)
+                make_test_report(add: { 'success' => false, 'some' => '42' },
+                                 timestamp: Time.now + 2)
                 make_installation_manifest
-                @cli.build_report(dir = make_tmpdir)
+                @cli.create_report(dir = make_tmpdir)
                 report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({'packages' => {'a' => {
-                    'cached' => true, 'built' => true, 'some' => 'flag'
-                }}}, report)
+                assert_equal({
+                    'packages' => {
+                        'a' => {
+                            'cached' => true,
+                            'import' => { 'invoked' => true, 'success' => true,
+                                          'some' => 'flag',
+                                          'timestamp' => Time.now.to_s },
+                            'build' => { 'invoked' => true, 'success' => true,
+                                         'some' => 'other',
+                                         'timestamp' => (Time.now + 1).to_s },
+                            'test' => { 'invoked' => true, 'success' => false,
+                                        'some' => '42',
+                                        'timestamp' => (Time.now + 2).to_s }
+                        }
+                    }
+                }, report)
             end
             it "ignores an absent cache pull report" do
-                make_build_report('some' => 'flag')
+                make_build_report(add: { 'some' => 'flag' })
                 make_installation_manifest
-                @cli.build_report(dir = make_tmpdir)
+                @cli.create_report(dir = make_tmpdir)
                 report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({'packages' => {'a' => {
-                    'cached' => false, 'built' => true, 'some' => 'flag'
-                }}}, report)
+                assert_equal({
+                    'packages' => {
+                        'a' => {
+                            'cached' => false,
+                            'build' => { 'invoked' => true, 'success' => true,
+                                         'some' => 'flag', 'timestamp' => Time.now.to_s }
+                        }
+                    }
+                }, report)
             end
             it "copies each package log directory contents to logs/" do
                 make_installation_manifest
@@ -184,7 +284,7 @@ module Autoproj::CLI
                 flexmock(@pkg.autobuild, logdir: logdir)
                 FileUtils.mkdir_p File.join(logdir, 'some', 'dir')
                 FileUtils.touch File.join(logdir, 'some', 'dir', 'contents')
-                @cli.build_report(dir = make_tmpdir)
+                @cli.create_report(dir = make_tmpdir)
                 assert File.file?(File.join(dir, 'logs', 'some', 'dir', 'contents'))
             end
             it "does not copy the toplevel log/ directory" do
@@ -198,7 +298,7 @@ module Autoproj::CLI
                 FileUtils.touch File.join(logdir, 'some', 'dir', 'contents')
                 dir = make_tmpdir
                 FileUtils.mkdir_p File.join(dir, 'logs')
-                @cli.build_report(dir)
+                @cli.create_report(dir)
                 assert File.file?(File.join(dir, 'logs', 'some', 'dir', 'contents'))
             end
         end
@@ -240,31 +340,43 @@ module Autoproj::CLI
             end
         end
 
-        def make_import_report(status = Hash.new)
-            make_report('import_report', status)
+        def make_import_report(add: {}, timestamp: Time.now)
+            make_report('import_report', add: add, timestamp: timestamp)
         end
 
-        def make_build_report(status = Hash.new)
-            make_report('build_report', status)
+        def make_build_report(add: {}, timestamp: Time.now)
+            make_report('build_report', add: add, timestamp: timestamp)
         end
 
-        def make_report(type, status = Hash.new)
-            path = @ws.send("#{type}_path")
+        def make_test_report(add: {}, timestamp: Time.now)
+            make_report('test_report', add: add, timestamp: timestamp,
+                                       path: @ws.utility_report_path('test'))
+        end
+
+        def make_report(type, add: {}, timestamp: Time.now,
+                              path: @ws.send("#{type}_path"))
             FileUtils.mkdir_p File.dirname(path)
             File.open(path, 'w') do |io|
                 JSON.dump({
                     type => {
-                        "packages": [
-                            {"name": "a", "built": true}.merge(status)
-                        ]
+                        "timestamp": timestamp,
+                        "packages": {
+                            'a' => {"invoked": true, "success": true}.merge(add)
+                        }
                     }
                 }, io)
             end
         end
 
-        def make_cache_pull(cached = true)
+        def make_cache_pull(cached = true, new_info = Hash.new)
             File.open(File.join(@ws.root_dir, 'cache-pull.json'), 'w') do |io|
-                JSON.dump({ 'a' => { 'cached' => cached } }, io)
+                JSON.dump({
+                    'cache_pull_report' => {
+                        'packages' => {
+                            'a' => { 'cached' => cached }.merge(new_info)
+                        }
+                    }
+                }, io)
             end
         end
 
