@@ -19,11 +19,20 @@ module Autoproj
                 end
             end
 
-            def cache_pull(dir, silent: true)
+            def cache_pull(dir, ignore: [], silent: true)
                 packages = resolve_packages
 
                 memo   = Hash.new
                 results = packages.each_with_object({}) do |pkg, h|
+                    if ignore.include?(pkg.name)
+                        fingerprint = pkg.fingerprint(memo: memo)
+                        h[pkg.name] = {
+                            'cached' => false,
+                            'fingerprint' => fingerprint
+                        }
+                        next
+                    end
+
                     state, fingerprint = pull_package_from_cache(dir, pkg, memo: memo)
                     puts "pulled #{pkg.name} (#{fingerprint})" if state && !silent
 
@@ -41,7 +50,7 @@ module Autoproj
                 results
             end
 
-            def cache_push(dir, silent: true)
+            def cache_push(dir, force: [], silent: true)
                 packages = resolve_packages
 
                 built = load_built_flags
@@ -52,7 +61,8 @@ module Autoproj
                         next
                     end
 
-                    state, fingerprint = push_package_to_cache(dir, pkg, memo: memo)
+                    state, fingerprint = push_package_to_cache(
+                        dir, pkg, force: force.include?(pkg.name), memo: memo)
                     puts "pushed #{pkg.name} (#{fingerprint})" if state && !silent
 
 
@@ -116,10 +126,10 @@ module Autoproj
                 [true, pkg.fingerprint(memo: memo)]
             end
 
-            def push_package_to_cache(dir, pkg, memo: {})
+            def push_package_to_cache(dir, pkg, force: false, memo: {})
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
-                if File.file?(path)
+                if !force && File.file?(path)
                     return [false, fingerprint]
                 end
 
