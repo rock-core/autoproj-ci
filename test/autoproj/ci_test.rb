@@ -22,15 +22,23 @@ module Autoproj::CLI
 
             it "pulls already built packages from the cache" do
                 make_archive("a", "TEST")
+                make_metadata("a", "TEST", timestamp: (time = Time.now))
 
                 results = @cli.cache_pull(@archive_dir)
-                assert_equal({ "a" => {'cached' => true, 'fingerprint' => 'TEST'} },
-                    results)
+                assert_equal({
+                    "a" => {
+                        'cached' => true, 'fingerprint' => 'TEST',
+                        'build' => {
+                            'invoked' => true,
+                            'timestamp' => time.to_s
+                        }
+                    },
+                }, results)
 
                 contents = File.read(File.join(@pkg.autobuild.prefix, 'contents'))
                 assert_equal 'archive', contents.strip
             end
-           it "does not pull an already built package specified in ignore" do
+            it "does not pull an already built package specified in ignore" do
                 make_archive("a", "TEST")
 
                 results = @cli.cache_pull(@archive_dir, ignore: ['a'])
@@ -65,10 +73,18 @@ module Autoproj::CLI
 
             it "pushes packages that are not already in the cache" do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                make_build_report(add: { 'some' => 'flag' }, timestamp: (time = Time.now))
                 results = @cli.cache_push(@archive_dir)
                 assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
                     results)
 
+                metadata = YAML.safe_load(
+                    File.read(File.join(@archive_dir, @pkg.name, "TEST.yml"))
+                )
+                assert_equal({
+                    'build' => { 'invoked' => true, 'success' => true,
+                                 'timestamp' => time.to_s, 'some' => 'flag' }
+                }, metadata)
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert_equal "prefix", File.read(
                     File.join(@archive_dir, @pkg.name, "contents"))
@@ -93,7 +109,7 @@ module Autoproj::CLI
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?, results
             end
-            it "ignores packages which were not built in the last build" do
+            it "ignores packages which were not successfully built in the last build" do
                 make_build_report add: { 'success' => false }
 
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
@@ -115,10 +131,21 @@ module Autoproj::CLI
             it "pushes a package that is already in the cache if it is listed in 'force'" do
                 make_archive("a", "TEST")
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                make_build_report(add: { 'some' => 'flag' }, timestamp: (time = Time.now))
+                File.open(File.join(@archive_dir, @pkg.name, "TEST.yml"), 'w') do |io|
+                    io.write "something"
+                end
                 results = @cli.cache_push(@archive_dir, force: ['a'])
                 assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
                     results)
 
+                metadata = YAML.safe_load(
+                    File.read(File.join(@archive_dir, @pkg.name, "TEST.yml"))
+                )
+                assert_equal({
+                    'build' => { 'invoked' => true, 'success' => true,
+                                 'timestamp' => time.to_s, 'some' => 'flag' }
+                }, metadata)
                 system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
                 assert_equal "prefix", File.read(
                     File.join(@archive_dir, @pkg.name, "contents"))
@@ -337,6 +364,17 @@ module Autoproj::CLI
 
             File.open(path, 'w') do |archive_io|
                 archive_io.write gziped_archive
+            end
+        end
+
+        def make_metadata(package_name, fingerprint, add: {}, timestamp: Time.now)
+            path = File.join(@archive_dir, package_name, "#{fingerprint}.yml")
+            FileUtils.mkdir_p File.dirname(path)
+
+            File.open(path, 'w') do |io|
+                YAML.dump({
+                    'build' => { 'timestamp' => timestamp.to_s, 'invoked' => true }.merge(add)
+                }, io)
             end
         end
 

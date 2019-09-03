@@ -59,6 +59,7 @@ module Autoproj
                     next unless (pkg_metadata = metadata[pkg.name])
                     next unless pkg_metadata['build']
                     next unless pkg_metadata['build']['success']
+                    pkg_metadata.delete('cached')
 
                     state, fingerprint = push_package_to_cache(
                         dir, pkg, pkg_metadata,
