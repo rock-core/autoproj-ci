@@ -147,8 +147,6 @@ module Autoproj
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
                 return [false, fingerprint, {}] unless File.file?(path)
 
-                path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
-
                 metadata_path = "#{path}.json"
                 metadata =
                     if File.file?(metadata_path)
@@ -156,13 +154,17 @@ module Autoproj
                     else
                         {}
                     end
-                # Upgrade from caches that did not have metadata
+
+                # Do not pull packages for which we should run tests
+                tests_enabled = pkg.test_utility.enabled?
+                tests_invoked = metadata['test'] && metadata['test']['invoked']
+                return [false, fingerprint, metadata] if tests_enabled && !tests_invoked
 
                 FileUtils.mkdir_p pkg.prefix
                 result = system('tar', 'xzf', path, chdir: pkg.prefix, out: '/dev/null')
                 raise "tar failed when pulling cache file for #{pkg.name}" unless result
 
-                [true, pkg.fingerprint(memo: memo), metadata]
+                [true, fingerprint, metadata]
             end
 
             def push_package_to_cache(dir, pkg, metadata, force: false, memo: {})
