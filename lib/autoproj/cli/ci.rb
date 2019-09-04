@@ -12,6 +12,8 @@ module Autoproj
         # same pattern, and registers its subcommand in {MainCI} while implementing
         # the functionality in this class
         class CI < InspectionTool
+            PHASES = %w[import build test].freeze
+
             def resolve_packages
                 initialize_and_load
                 source_packages, * = finalize_setup(
@@ -78,7 +80,12 @@ module Autoproj
                     next unless pkg_metadata['build']
                     next unless pkg_metadata['build']['success']
 
-                    pkg_metadata.delete('cached')
+                    # Remove cached flags before saving
+                    pkg_metadata = pkg_metadata.dup
+                    PHASES.each do |phase_name|
+                        pkg_metadata[phase_name]&.delete('cached')
+                    end
+
                     state, fingerprint = push_package_to_cache(
                         dir, pkg, pkg_metadata,
                         force: force.include?(pkg.name), memo: memo
@@ -206,6 +213,7 @@ module Autoproj
             end
 
             def consolidated_report
+                # NOTE: keys must match PHASES
                 new_reports = {
                     'import' => @ws.import_report_path,
                     'build' => @ws.build_report_path,
@@ -216,14 +224,26 @@ module Autoproj
                 # information from the other phase reports
                 cache_report_path = File.join(@ws.root_dir, 'cache-pull.json')
                 result = load_report(cache_report_path, 'cache_pull_report')['packages']
+                result.each_value do |info|
+                    next unless info.delete('cached')
+
+                    PHASES.each do |phase_name|
+                        if (phase_info = info[phase_name])
+                            phase_info['cached'] = true
+                        end
+                    end
+                end
 
                 new_reports.each do |phase_name, path|
                     report = load_report(path, "#{phase_name}_report")
                     report['packages'].each do |pkg_name, pkg_info|
-                        result[pkg_name] ||= { 'cached' => false }
-                        result[pkg_name][phase_name] = pkg_info.merge(
-                            'timestamp' => report['timestamp']
-                        )
+                        result[pkg_name] ||= {}
+                        if pkg_info['invoked']
+                            result[pkg_name][phase_name] = pkg_info.merge(
+                                'cached' => false,
+                                'timestamp' => report['timestamp']
+                            )
+                        end
                     end
                 end
                 { 'packages' => result }

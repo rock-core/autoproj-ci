@@ -245,8 +245,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                         {
                             'packages' => {
                                 'a' => {
-                                    'cached' => false,
                                     report_type => {
+                                        'cached' => false,
                                         'invoked' => true,
                                         'success' => true,
                                         'some' => 'flag',
@@ -267,8 +267,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                         {
                             'packages' => {
                                 'a' => {
-                                    'cached' => true,
                                     report_type => {
+                                        'cached' => true,
                                         'invoked' => false
                                     }
                                 }
@@ -276,7 +276,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                         }, report
                     )
                 end
-                it 'overwrites cache info with entries from the import report' do
+                it "overwrites cache info with entries from the #{report_type} report" do
                     make_cache_pull(true, report_type => { 'invoked' => false })
                     make_report("#{report_type}_report",
                                 add: { 'some' => 'flag' },
@@ -288,8 +288,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                         {
                             'packages' => {
                                 'a' => {
-                                    'cached' => true,
                                     report_type => {
+                                        'cached' => false,
                                         'invoked' => true,
                                         'success' => true,
                                         'some' => 'flag',
@@ -325,15 +325,14 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                     {
                         'packages' => {
                             'a' => {
-                                'cached' => true,
-                                'import' => { 'invoked' => true, 'success' => true,
-                                              'some' => 'flag',
+                                'import' => { 'cached' => false, 'invoked' => true,
+                                              'success' => true, 'some' => 'flag',
                                               'timestamp' => Time.now.to_s },
-                                'build' => { 'invoked' => true, 'success' => true,
-                                             'some' => 'other',
+                                'build' => { 'cached' => false, 'invoked' => true,
+                                             'success' => true, 'some' => 'other',
                                              'timestamp' => (Time.now + 1).to_s },
-                                'test' => { 'invoked' => true, 'success' => false,
-                                            'some' => '42',
+                                'test' => { 'cached' => false, 'invoked' => true,
+                                            'success' => false, 'some' => '42',
                                             'timestamp' => (Time.now + 2).to_s }
                             }
                         }
@@ -349,9 +348,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                     {
                         'packages' => {
                             'a' => {
-                                'cached' => false,
                                 'build' => { 'invoked' => true, 'success' => true,
-                                             'some' => 'flag',
+                                             'cached' => false, 'some' => 'flag',
                                              'timestamp' => Time.now.to_s }
                             }
                         }
