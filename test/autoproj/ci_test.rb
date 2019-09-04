@@ -1,212 +1,228 @@
-require "test_helper"
+# frozen_string_literal: true
+
+require 'test_helper'
 require 'rubygems/package'
 require 'timecop'
 
-module Autoproj::CLI
-    describe CI do
+module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Documentation
+    describe CI do # rubocop:disable Metrics/BlockLength
         before do
             @ws = ws_create
             @archive_dir = make_tmpdir
             @prefix_dir = make_tmpdir
 
-            @pkg = ws_define_package :cmake, "a"
-            flexmock(@pkg.autobuild).
-                should_receive(:fingerprint).and_return("TEST")
+            @pkg = ws_define_package :cmake, 'a'
+            flexmock(@pkg.autobuild).should_receive(:fingerprint).and_return('TEST')
             @cli = CI.new(@ws)
         end
 
-        describe "pull" do
+        describe 'pull' do
             before do
                 make_build_report
             end
 
-            it "pulls already built packages from the cache" do
-                make_archive("a", "TEST")
-                make_metadata("a", "TEST", timestamp: (time = Time.now))
+            it 'pulls already built packages from the cache' do
+                make_archive('a', 'TEST')
+                make_metadata('a', 'TEST', timestamp: (time = Time.now))
 
                 results = @cli.cache_pull(@archive_dir)
-                assert_equal({
-                    "a" => {
-                        'cached' => true, 'fingerprint' => 'TEST',
-                        'build' => {
-                            'invoked' => true,
-                            'timestamp' => time.to_s
+                assert_equal(
+                    {
+                        'a' => {
+                            'cached' => true, 'fingerprint' => 'TEST',
+                            'build' => {
+                                'invoked' => true,
+                                'timestamp' => time.to_s
+                            }
                         }
-                    },
-                }, results)
+                    }, results
+                )
 
                 contents = File.read(File.join(@pkg.autobuild.prefix, 'contents'))
                 assert_equal 'archive', contents.strip
             end
-            it "does not pull an already built package specified in ignore" do
-                make_archive("a", "TEST")
+            it 'does not pull an already built package specified in ignore' do
+                make_archive('a', 'TEST')
 
                 results = @cli.cache_pull(@archive_dir, ignore: ['a'])
-                assert_equal({ "a" => {'cached' => false, 'fingerprint' => 'TEST'} },
-                    results)
+                assert_equal({ 'a' => { 'cached' => false, 'fingerprint' => 'TEST' } },
+                             results)
 
                 refute File.directory?(@pkg.autobuild.prefix)
             end
-            it "ignores packages that are not already in the cache" do
+            it 'ignores packages that are not already in the cache' do
                 cli = CI.new(@ws)
                 results = cli.cache_pull(@archive_dir)
-                assert_equal({ "a" => {'cached' => false, 'fingerprint' => 'TEST'} },
-                    results)
+                assert_equal({ 'a' => { 'cached' => false, 'fingerprint' => 'TEST' } },
+                             results)
 
                 refute File.directory?(@pkg.autobuild.prefix)
             end
-            it "optionally reports its progress" do
-                make_archive("a", "TEST")
+            it 'optionally reports its progress' do
+                make_archive('a', 'TEST')
 
-                flexmock(@cli).should_receive(:puts).explicitly.once.
-                    with("pulled a (TEST)")
-                @cli.should_receive(:puts).explicitly.once.
-                    with("1 hits, 0 misses")
+                flexmock(@cli).should_receive(:puts).explicitly.once
+                              .with('pulled a (TEST)')
+                @cli.should_receive(:puts).explicitly.once
+                    .with('1 hits, 0 misses')
                 @cli.cache_pull(@archive_dir, silent: false)
             end
         end
 
-        describe "#cache_state" do
-            it "determines if a cache entry can be used" do
-                make_archive("a", "TEST")
-                make_metadata("a", "TEST", timestamp: (time = Time.now))
+        describe '#cache_state' do
+            it 'determines if a cache entry can be used' do
+                make_archive('a', 'TEST')
+                make_metadata('a', 'TEST', timestamp: Time.now)
 
                 results = @cli.cache_state(@archive_dir)
-                assert_equal({
-                    "a" => {
-                        'path' => File.join(@archive_dir, 'a', 'TEST'),
-                        'cached' => true, 'metadata' => true, 'fingerprint' => 'TEST',
-                    },
-                }, results)
+                assert_equal(
+                    {
+                        'a' => {
+                            'path' => File.join(@archive_dir, 'a', 'TEST'),
+                            'cached' => true, 'metadata' => true, 'fingerprint' => 'TEST'
+                        }
+                    }, results
+                )
             end
 
-            it "determines if there are no cache entries" do
+            it 'determines if there are no cache entries' do
                 cli = CI.new(@ws)
                 results = cli.cache_state(@archive_dir)
-                assert_equal({
-                    'a' => {
-                        'path' => File.join(@archive_dir, 'a', 'TEST'),
-                        'cached' => false, 'metadata' => false, 'fingerprint' => 'TEST'
-                    }
-                }, results)
+                assert_equal(
+                    {
+                        'a' => {
+                            'path' => File.join(@archive_dir, 'a', 'TEST'),
+                            'cached' => false, 'metadata' => false,
+                            'fingerprint' => 'TEST'
+                        }
+                    }, results
+                )
             end
         end
 
-        describe "push" do
+        describe 'push' do
             before do
                 make_build_report
             end
 
-            it "pushes packages that are not already in the cache" do
+            it 'pushes packages that are not already in the cache' do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 make_build_report(add: { 'some' => 'flag' }, timestamp: (time = Time.now))
                 results = @cli.cache_push(@archive_dir)
-                assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
-                    results)
+                assert_equal({ 'a' => { 'updated' => true, 'fingerprint' => 'TEST' } },
+                             results)
 
-                metadata = JSON.load(
-                    File.read(File.join(@archive_dir, @pkg.name, "TEST.json"))
+                metadata = JSON.parse(
+                    File.read(File.join(@archive_dir, @pkg.name, 'TEST.json'))
                 )
-                assert_equal({
-                    'build' => { 'invoked' => true, 'success' => true,
-                                 'timestamp' => time.to_s, 'some' => 'flag' }
-                }, metadata)
-                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
-                assert_equal "prefix", File.read(
-                    File.join(@archive_dir, @pkg.name, "contents"))
+                assert_equal(
+                    {
+                        'build' => { 'invoked' => true, 'success' => true,
+                                     'timestamp' => time.to_s, 'some' => 'flag' }
+                    }, metadata
+                )
+                system('tar', 'xzf', 'TEST', chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal 'prefix', File.read(
+                    File.join(@archive_dir, @pkg.name, 'contents')
+                )
             end
-            it "does nothing if there is no build report" do
+            it 'does nothing if there is no build report' do
                 FileUtils.rm_f @ws.build_report_path
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?
             end
-            it "does nothing if there is a report but it contains no build info" do
+            it 'does nothing if there is a report but it contains no build info' do
                 FileUtils.rm_f @ws.build_report_path
                 make_import_report
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?
             end
-            it "ignores packages which were not in the last build" do
+            it 'ignores packages which were not in the last build' do
                 File.open(@ws.build_report_path, 'w') do |io|
-                    JSON.dump({'build_report' => { 'packages' => [] }}, io)
+                    JSON.dump({ 'build_report' => { 'packages' => [] } }, io)
                 end
 
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?, results
             end
-            it "ignores packages which were not successfully built in the last build" do
+            it 'ignores packages which were not successfully built in the last build' do
                 make_build_report add: { 'success' => false }
 
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
-                assert results.empty?, "packages were pushed that should "\
+                assert results.empty?, 'packages were pushed that should '\
                                        "not have: #{results}"
             end
-            it "ignores packages that are already in the cache" do
-                make_archive("a", "TEST")
+            it 'ignores packages that are already in the cache' do
+                make_archive('a', 'TEST')
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
-                assert_equal({ "a" => {'updated' => false, 'fingerprint' => 'TEST'} },
-                    results)
+                assert_equal({ 'a' => { 'updated' => false, 'fingerprint' => 'TEST' } },
+                             results)
 
-                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
-                assert_equal "archive", File.read(
-                    File.join(@archive_dir, @pkg.name, "contents"))
+                system('tar', 'xzf', 'TEST', chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal 'archive', File.read(
+                    File.join(@archive_dir, @pkg.name, 'contents')
+                )
             end
-            it "pushes a package that is already in the cache if it is listed in 'force'" do
-                make_archive("a", "TEST")
+            it 'pushes a package that is already in the cache if it is listed in force' do
+                make_archive('a', 'TEST')
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 make_build_report(add: { 'some' => 'flag' }, timestamp: (time = Time.now))
-                File.open(File.join(@archive_dir, @pkg.name, "TEST.json"), 'w') do |io|
-                    io.write "something"
+                File.open(File.join(@archive_dir, @pkg.name, 'TEST.json'), 'w') do |io|
+                    io.write 'something'
                 end
                 results = @cli.cache_push(@archive_dir, force: ['a'])
-                assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
-                    results)
+                assert_equal({ 'a' => { 'updated' => true, 'fingerprint' => 'TEST' } },
+                             results)
 
-                metadata = JSON.load(
-                    File.read(File.join(@archive_dir, @pkg.name, "TEST.json"))
+                metadata = JSON.parse(
+                    File.read(File.join(@archive_dir, @pkg.name, 'TEST.json'))
                 )
-                assert_equal({
-                    'build' => { 'invoked' => true, 'success' => true,
-                                 'timestamp' => time.to_s, 'some' => 'flag' }
-                }, metadata)
-                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
-                assert_equal "prefix", File.read(
-                    File.join(@archive_dir, @pkg.name, "contents"))
+                assert_equal(
+                    {
+                        'build' => { 'invoked' => true, 'success' => true,
+                                     'timestamp' => time.to_s, 'some' => 'flag' }
+                    }, metadata
+                )
+                system('tar', 'xzf', 'TEST', chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal 'prefix', File.read(
+                    File.join(@archive_dir, @pkg.name, 'contents')
+                )
             end
-            it "deals with race conditions on push" do
+            it 'deals with race conditions on push' do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
 
-                flexmock(@cli).should_receive(:system).explicitly.
-                    with("tar", "czf", any, any, any).
-                    pass_thru do
-                        make_archive("a", "TEST")
-                        true
-                    end
+                flexmock(@cli).should_receive(:system).explicitly
+                              .with('tar', 'czf', any, any, any)
+                              .pass_thru do
+                                  make_archive('a', 'TEST')
+                                  true
+                              end
 
                 results = @cli.cache_push(@archive_dir)
-                assert_equal({ "a" => {'updated' => true, 'fingerprint' => 'TEST'} },
-                    results)
+                assert_equal({ 'a' => { 'updated' => true, 'fingerprint' => 'TEST' } },
+                             results)
 
-                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
-                assert %w[archive prefix].include?(File.read(
-                    File.join(@archive_dir, @pkg.name, "contents")))
+                system('tar', 'xzf', 'TEST', chdir: File.join(@archive_dir, @pkg.name))
+                assert %w[archive prefix].include?(
+                    File.read(File.join(@archive_dir, @pkg.name, 'contents'))
+                )
             end
 
-            it "optionally reports its progress" do
+            it 'optionally reports its progress' do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
 
-                flexmock(@cli).should_receive(:puts).explicitly.once.
-                    with("pushed a (TEST)")
-                @cli.should_receive(:puts).explicitly.once.
-                    with("1 updated packages, 0 reused entries")
+                flexmock(@cli).should_receive(:puts).explicitly.once
+                              .with('pushed a (TEST)')
+                @cli.should_receive(:puts).explicitly.once
+                    .with('1 updated packages, 0 reused entries')
                 @cli.cache_push(@archive_dir, silent: false)
             end
         end
 
-        describe "report" do
+        describe 'report' do
             before do
                 Timecop.freeze
             end
@@ -214,65 +230,75 @@ module Autoproj::CLI
                 Timecop.return
             end
 
-            def self.consolidated_report_single_behavior(report_type, report_path_accessor: )
+            def self.consolidated_report_single_behavior(
+                report_type,
+                report_path_accessor:
+            )
                 it "reads the #{report_type} report" do
                     make_report("#{report_type}_report",
                                 add: { 'some' => 'flag' },
-                                path: report_path_accessor.(@ws))
+                                path: report_path_accessor.call(@ws))
                     make_installation_manifest
                     @cli.create_report(dir = make_tmpdir)
-                    report = JSON.load(File.read(File.join(dir, 'report.json')))
-                    assert_equal({
-                        'packages' => {
-                            'a' => {
-                                'cached' => false,
-                                report_type => {
-                                    'invoked' => true,
-                                    'success' => true,
-                                    'some' => 'flag',
-                                    'timestamp' => Time.now.to_s
+                    report = JSON.parse(File.read(File.join(dir, 'report.json')))
+                    assert_equal(
+                        {
+                            'packages' => {
+                                'a' => {
+                                    'cached' => false,
+                                    report_type => {
+                                        'invoked' => true,
+                                        'success' => true,
+                                        'some' => 'flag',
+                                        'timestamp' => Time.now.to_s
+                                    }
                                 }
                             }
-                        }
-                    }, report)
+                        }, report
+                    )
                 end
-                it "keeps cached #{report_type} info if there is no new info in the #{report_type} report" do
+                it "keeps cached #{report_type} info if there is no new info "\
+                   "in the #{report_type} report" do
                     make_cache_pull(true, report_type => { 'invoked' => false })
                     make_installation_manifest
                     @cli.create_report(dir = make_tmpdir)
-                    report = JSON.load(File.read(File.join(dir, 'report.json')))
-                    assert_equal({
-                        'packages' => {
-                            'a' => {
-                                'cached' => true,
-                                report_type => {
-                                    'invoked' => false
+                    report = JSON.parse(File.read(File.join(dir, 'report.json')))
+                    assert_equal(
+                        {
+                            'packages' => {
+                                'a' => {
+                                    'cached' => true,
+                                    report_type => {
+                                        'invoked' => false
+                                    }
                                 }
                             }
-                        }
-                    }, report)
+                        }, report
+                    )
                 end
-                it "overwrites cache info with entries from the import report" do
+                it 'overwrites cache info with entries from the import report' do
                     make_cache_pull(true, report_type => { 'invoked' => false })
                     make_report("#{report_type}_report",
                                 add: { 'some' => 'flag' },
-                                path: report_path_accessor.(@ws))
+                                path: report_path_accessor.call(@ws))
                     make_installation_manifest
                     @cli.create_report(dir = make_tmpdir)
-                    report = JSON.load(File.read(File.join(dir, 'report.json')))
-                    assert_equal({
-                        'packages' => {
-                            'a' => {
-                                'cached' => true,
-                                report_type => {
-                                    'invoked' => true,
-                                    'success' => true,
-                                    'some' => 'flag',
-                                    'timestamp' => Time.now.to_s
+                    report = JSON.parse(File.read(File.join(dir, 'report.json')))
+                    assert_equal(
+                        {
+                            'packages' => {
+                                'a' => {
+                                    'cached' => true,
+                                    report_type => {
+                                        'invoked' => true,
+                                        'success' => true,
+                                        'some' => 'flag',
+                                        'timestamp' => Time.now.to_s
+                                    }
                                 }
                             }
-                        }
-                    }, report)
+                        }, report
+                    )
                 end
             end
 
@@ -286,8 +312,7 @@ module Autoproj::CLI
                 'test', report_path_accessor: ->(ws) { ws.utility_report_path('test') }
             )
 
-
-            it "saves a consolidated manifest in report.json" do
+            it 'saves a consolidated manifest in report.json' do
                 make_cache_pull
                 make_import_report(add: { 'some' => 'flag' }, timestamp: Time.now)
                 make_build_report(add: { 'some' => 'other' }, timestamp: Time.now + 1)
@@ -295,40 +320,45 @@ module Autoproj::CLI
                                  timestamp: Time.now + 2)
                 make_installation_manifest
                 @cli.create_report(dir = make_tmpdir)
-                report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({
-                    'packages' => {
-                        'a' => {
-                            'cached' => true,
-                            'import' => { 'invoked' => true, 'success' => true,
-                                          'some' => 'flag',
-                                          'timestamp' => Time.now.to_s },
-                            'build' => { 'invoked' => true, 'success' => true,
-                                         'some' => 'other',
-                                         'timestamp' => (Time.now + 1).to_s },
-                            'test' => { 'invoked' => true, 'success' => false,
-                                        'some' => '42',
-                                        'timestamp' => (Time.now + 2).to_s }
+                report = JSON.parse(File.read(File.join(dir, 'report.json')))
+                assert_equal(
+                    {
+                        'packages' => {
+                            'a' => {
+                                'cached' => true,
+                                'import' => { 'invoked' => true, 'success' => true,
+                                              'some' => 'flag',
+                                              'timestamp' => Time.now.to_s },
+                                'build' => { 'invoked' => true, 'success' => true,
+                                             'some' => 'other',
+                                             'timestamp' => (Time.now + 1).to_s },
+                                'test' => { 'invoked' => true, 'success' => false,
+                                            'some' => '42',
+                                            'timestamp' => (Time.now + 2).to_s }
+                            }
                         }
-                    }
-                }, report)
+                    }, report
+                )
             end
-            it "ignores an absent cache pull report" do
+            it 'ignores an absent cache pull report' do
                 make_build_report(add: { 'some' => 'flag' })
                 make_installation_manifest
                 @cli.create_report(dir = make_tmpdir)
-                report = JSON.load(File.read(File.join(dir, 'report.json')))
-                assert_equal({
-                    'packages' => {
-                        'a' => {
-                            'cached' => false,
-                            'build' => { 'invoked' => true, 'success' => true,
-                                         'some' => 'flag', 'timestamp' => Time.now.to_s }
+                report = JSON.parse(File.read(File.join(dir, 'report.json')))
+                assert_equal(
+                    {
+                        'packages' => {
+                            'a' => {
+                                'cached' => false,
+                                'build' => { 'invoked' => true, 'success' => true,
+                                             'some' => 'flag',
+                                             'timestamp' => Time.now.to_s }
+                            }
                         }
-                    }
-                }, report)
+                    }, report
+                )
             end
-            it "copies each package log directory contents to logs/" do
+            it 'copies each package log directory contents to logs/' do
                 make_installation_manifest
 
                 logdir = make_tmpdir
@@ -340,7 +370,7 @@ module Autoproj::CLI
                 @cli.create_report(dir = make_tmpdir)
                 assert File.file?(File.join(dir, 'logs', 'some', 'dir', 'contents'))
             end
-            it "does not copy the toplevel log/ directory" do
+            it 'does not copy the toplevel log/ directory' do
                 make_installation_manifest
 
                 logdir = make_tmpdir
@@ -358,11 +388,11 @@ module Autoproj::CLI
 
         def make_git(dir, file_content: File.basename(dir))
             FileUtils.mkdir_p dir
-            system("git", "init", chdir: dir)
+            system('git', 'init', chdir: dir)
             File.open(File.join(dir, 'contents'), 'w') do |io|
                 io.write file_content
             end
-            system("git", "add", ".", chdir: dir)
+            system('git', 'add', '.', chdir: dir)
         end
 
         def make_prefix(dir, file_content: 'prefix')
@@ -382,7 +412,7 @@ module Autoproj::CLI
                 file_io.write file_content
             end
 
-            gziped_archive = IO.popen(["gzip", "-"], "r+") do |gzip_io|
+            gziped_archive = IO.popen(['gzip', '-'], 'r+') do |gzip_io|
                 gzip_io.write tar_io.string
                 gzip_io.close_write
                 gzip_io.read
@@ -398,9 +428,12 @@ module Autoproj::CLI
             FileUtils.mkdir_p File.dirname(path)
 
             File.open(path, 'w') do |io|
-                JSON.dump({
-                    'build' => { 'timestamp' => timestamp.to_s, 'invoked' => true }.merge(add)
-                }, io)
+                JSON.dump(
+                    {
+                        'build' => { 'timestamp' => timestamp.to_s, 'invoked' => true }
+                                   .merge(add)
+                    }, io
+                )
             end
         end
 
@@ -417,36 +450,43 @@ module Autoproj::CLI
                                        path: @ws.utility_report_path('test'))
         end
 
-        def make_report(type, add: {}, timestamp: Time.now,
-                              path: @ws.send("#{type}_path"))
+        def make_report(
+            type, add: {}, timestamp: Time.now,
+            path: @ws.send("#{type}_path")
+        )
             FileUtils.mkdir_p File.dirname(path)
             File.open(path, 'w') do |io|
-                JSON.dump({
-                    type => {
-                        "timestamp": timestamp,
-                        "packages": {
-                            'a' => {"invoked": true, "success": true}.merge(add)
+                JSON.dump(
+                    {
+                        type => {
+                            'timestamp': timestamp,
+                            'packages': {
+                                'a' => { 'invoked': true, 'success': true }.merge(add)
+                            }
                         }
-                    }
-                }, io)
+                    }, io
+                )
             end
         end
 
-        def make_cache_pull(cached = true, new_info = Hash.new)
+        def make_cache_pull(cached = true, new_info = {})
             File.open(File.join(@ws.root_dir, 'cache-pull.json'), 'w') do |io|
-                JSON.dump({
-                    'cache_pull_report' => {
-                        'packages' => {
-                            'a' => { 'cached' => cached }.merge(new_info)
+                JSON.dump(
+                    {
+                        'cache_pull_report' => {
+                            'packages' => {
+                                'a' => { 'cached' => cached }.merge(new_info)
+                            }
                         }
-                    }
-                }, io)
+                    }, io
+                )
             end
         end
 
         def make_installation_manifest
             manifest = Autoproj::InstallationManifest.new(
-                @ws.installation_manifest_path)
+                @ws.installation_manifest_path
+            )
             manifest.add_package(@pkg)
             manifest.save
         end

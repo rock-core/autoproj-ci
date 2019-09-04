@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'autoproj/cli/inspection_tool'
 require 'tmpdir'
 
@@ -13,16 +15,17 @@ module Autoproj
             def resolve_packages
                 initialize_and_load
                 source_packages, * = finalize_setup(
-                    [], non_imported_packages: :ignore)
+                    [], non_imported_packages: :ignore
+                )
                 source_packages.map do |pkg_name|
                     ws.manifest.find_autobuild_package(pkg_name)
                 end
             end
 
-            def cache_state(dir, ignore: [], silent: true)
+            def cache_state(dir, ignore: [])
                 packages = resolve_packages
 
-                memo   = Hash.new
+                memo = {}
                 packages.each_with_object({}) do |pkg, h|
                     state = package_cache_state(dir, pkg, memo: memo)
                     if ignore.include?(pkg.name)
@@ -36,7 +39,7 @@ module Autoproj
             def cache_pull(dir, ignore: [], silent: true)
                 packages = resolve_packages
 
-                memo   = Hash.new
+                memo = {}
                 results = packages.each_with_object({}) do |pkg, h|
                     if ignore.include?(pkg.name)
                         fingerprint = pkg.fingerprint(memo: memo)
@@ -47,7 +50,8 @@ module Autoproj
                         next
                     end
 
-                    state, fingerprint, metadata = pull_package_from_cache(dir, pkg, memo: memo)
+                    state, fingerprint, metadata =
+                        pull_package_from_cache(dir, pkg, memo: memo)
                     puts "pulled #{pkg.name} (#{fingerprint})" if state && !silent
 
                     h[pkg.name] = metadata.merge(
@@ -68,16 +72,17 @@ module Autoproj
                 packages = resolve_packages
                 metadata = consolidated_report['packages']
 
-                memo   = Hash.new
+                memo = {}
                 results = packages.each_with_object({}) do |pkg, h|
                     next unless (pkg_metadata = metadata[pkg.name])
                     next unless pkg_metadata['build']
                     next unless pkg_metadata['build']['success']
-                    pkg_metadata.delete('cached')
 
+                    pkg_metadata.delete('cached')
                     state, fingerprint = push_package_to_cache(
                         dir, pkg, pkg_metadata,
-                        force: force.include?(pkg.name), memo: memo)
+                        force: force.include?(pkg.name), memo: memo
+                    )
                     puts "pushed #{pkg.name} (#{fingerprint})" if state && !silent
 
                     h[pkg.name] = {
@@ -108,8 +113,8 @@ module Autoproj
                     JSON.dump(report, io)
                 end
 
-                installation_manifest = InstallationManifest.
-                    from_workspace_root(@ws.root_dir)
+                installation_manifest = InstallationManifest
+                                        .from_workspace_root(@ws.root_dir)
                 logs = File.join(dir, 'logs')
                 # Pre-create the logs, or cp_r will have a different behavior
                 # if the directory exists or not
@@ -140,22 +145,23 @@ module Autoproj
             def pull_package_from_cache(dir, pkg, memo: {})
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
-                unless File.file?(path)
-                    return [false, fingerprint, {}]
-                end
+                return [false, fingerprint, {}] unless File.file?(path)
 
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
 
                 metadata_path = "#{path}.json"
-                metadata = JSON.load(File.read(metadata_path)) if File.file?(metadata_path)
+                metadata =
+                    if File.file?(metadata_path)
+                        JSON.parse(File.read(metadata_path))
+                    else
+                        {}
+                    end
                 # Upgrade from caches that did not have metadata
-                metadata ||= {}
 
                 FileUtils.mkdir_p pkg.prefix
-                result = system("tar", "xzf", path, chdir: pkg.prefix, out: '/dev/null')
-                unless result
-                    raise "tar failed when pulling cache file for #{pkg.name}"
-                end
+                result = system('tar', 'xzf', path, chdir: pkg.prefix, out: '/dev/null')
+                raise "tar failed when pulling cache file for #{pkg.name}" unless result
+
                 [true, pkg.fingerprint(memo: memo), metadata]
             end
 
@@ -170,17 +176,13 @@ module Autoproj
                     FileUtils.mv temppath, "#{path}.json"
                 end
 
-                if !force && File.file?(path)
-                    return [false, fingerprint]
-                end
+                return [false, fingerprint] if !force && File.file?(path)
 
-                result = system("tar", "czf", temppath, ".",
-                    chdir: pkg.prefix, out: '/dev/null')
-                unless result
-                    raise "tar failed when pushing cache file for #{pkg.name}"
-                end
+                result = system('tar', 'czf', temppath, '.',
+                                chdir: pkg.prefix, out: '/dev/null')
+                raise "tar failed when pushing cache file for #{pkg.name}" unless result
+
                 FileUtils.mv temppath, path
-
                 [true, fingerprint]
             end
 
@@ -188,16 +190,17 @@ module Autoproj
                 path = @ws.build_report_path
                 return {} unless File.file?(path)
 
-                report = JSON.load(File.read(path))
-                report['build_report']['packages'].
-                    each_with_object({}) do |pkg_report, h|
+                report = JSON.parse(File.read(path))
+                report['build_report']['packages']
+                    .each_with_object({}) do |pkg_report, h|
                         h[pkg_report['name']] = pkg_report['built']
                     end
             end
 
             def load_report(path, root_name, default: { 'packages' => {} })
                 return default unless File.file?(path)
-                JSON.load(File.read(path)).fetch(root_name)
+
+                JSON.parse(File.read(path)).fetch(root_name)
             end
 
             def consolidated_report
@@ -214,9 +217,6 @@ module Autoproj
 
                 new_reports.each do |phase_name, path|
                     report = load_report(path, "#{phase_name}_report")
-                    packages = report['packages']
-                    timestamp = report['timestamp']
-
                     report['packages'].each do |pkg_name, pkg_info|
                         result[pkg_name] ||= { 'cached' => false }
                         result[pkg_name][phase_name] = pkg_info.merge(
@@ -229,4 +229,3 @@ module Autoproj
         end
     end
 end
-
