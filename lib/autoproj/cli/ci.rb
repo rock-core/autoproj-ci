@@ -106,6 +106,53 @@ module Autoproj
                 results
             end
 
+            # Checks if a package's test results should be processed with xunit-viewer
+            #
+            # @param [String] results_dir the directory where the
+            # @param [String] xunit_output path to the xunit-viewer output. An
+            #   existing file is re-generated only if force is true
+            # @param [Boolean] force re-generation of the xunit-viewer output
+            def need_xunit_processing?(results_dir, xunit_output, force: false)
+                # We don't re-generate if the xunit-processed files were cached
+                return if !force && File.file?(xunit_output)
+
+                # We only check whether there are xml files in the
+                # package's test dir. That's the only check we do ... if
+                # the XML files are not JUnit, we'll finish with an empty
+                # xunit html file
+                Dir.enum_for(:glob, File.join(results_dir, '*.xml'))
+                   .first
+            end
+
+            # Process the package's test results with xunit-viewer
+            #
+            # @param [String] xunit_viewer path to xunit-viewer
+            # @param [Boolean] force re-generation of the xunit-viewer output. If
+            #   false, packages that already have a xunit-viewer output will be skipped
+            def process_test_results_xunit(force: false, xunit_viewer: 'xunit-viewer')
+                consolidated_report['packages'].each_value do |info|
+                    next unless info['test']
+                    next unless (results_dir = info['test']['target_dir'])
+
+                    xunit_output = "#{results_dir}.html"
+                    next unless need_xunit_processing?(results_dir, xunit_output,
+                                                       force: force)
+
+                    success = system(xunit_viewer,
+                                     "--results=#{results_dir}",
+                                     "--output=#{xunit_output}")
+                    unless success
+                        Autoproj.warn 'xunit-viewer conversion failed '\
+                                      "for '#{results_dir}'"
+                    end
+                end
+            end
+
+            # Post-processing of test results
+            def process_test_results(force: false, xunit_viewer: 'xunit-viewer')
+                process_test_results_xunit(force: force, xunit_viewer: xunit_viewer)
+            end
+
             # Build a report in a given directory
             #
             # The method itself will not archive the directory, only gather the
@@ -123,6 +170,7 @@ module Autoproj
                 installation_manifest = InstallationManifest
                                         .from_workspace_root(@ws.root_dir)
                 logs = File.join(dir, 'logs')
+
                 # Pre-create the logs, or cp_r will have a different behavior
                 # if the directory exists or not
                 FileUtils.mkdir_p logs

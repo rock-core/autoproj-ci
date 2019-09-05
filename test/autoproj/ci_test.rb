@@ -14,6 +14,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
             @pkg = ws_define_package :cmake, 'a'
             flexmock(@pkg.autobuild).should_receive(:fingerprint).and_return('TEST')
             @cli = CI.new(@ws)
+            flexmock(@cli)
         end
 
         describe 'pull' do
@@ -381,6 +382,74 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 FileUtils.mkdir_p File.join(dir, 'logs')
                 @cli.create_report(dir)
                 assert File.file?(File.join(dir, 'logs', 'some', 'dir', 'contents'))
+            end
+        end
+
+        describe '#need_xunit_processing?' do
+            it 'returns false if the results directory does not exist' do
+                output = File.join(@prefix_dir, 'test')
+                refute @cli.need_xunit_processing?(output, "some/file")
+            end
+            it 'returns true if the folder has XML content' do
+                FileUtils.touch(File.join(@prefix_dir, 'test.xml'))
+                assert @cli.need_xunit_processing?(@prefix_dir, 'bla', force: true)
+            end
+            it 'returns false if the xunit output already exists' do
+                FileUtils.touch(File.join(@prefix_dir, 'test.xml'))
+                FileUtils.touch(output = File.join(@prefix_dir, 'test.html'))
+                refute @cli.need_xunit_processing?(@prefix_dir, output)
+            end
+            it 'returns true if the xunit output already exists but force is true' do
+                FileUtils.touch(File.join(@prefix_dir, 'test.xml'))
+                FileUtils.touch(output = File.join(@prefix_dir, 'test.html'))
+                assert @cli.need_xunit_processing?(@prefix_dir, output, force: true)
+            end
+        end
+
+        describe '#postprocess_test_results' do
+            describe 'xunit processing' do
+                it 'skips packages that do not have tests' do
+                    report = { 'packages' => { 'a' => { } } }
+                    @cli.should_receive(:consolidated_report).and_return(report)
+                    @cli.should_receive(:system).explicitly.never
+                    @cli.process_test_results
+                end
+                it 'skips packages for which need_xunit_processing? returns false' do
+                    report = {
+                        'packages' => { 'a' => { 'test' => { 'target_dir' => 'bla' } } }
+                    }
+                    @cli.should_receive(:consolidated_report).and_return(report)
+                    @cli.should_receive(:need_xunit_processing?)
+                        .with('bla', 'bla.html', force: false).once
+                        .and_return(false)
+                    @cli.should_receive(:system).explicitly.never
+                    @cli.process_test_results
+                end
+                it 'processes packages for which need_xunit_processing? returns true' do
+                    report = {
+                        'packages' => { 'a' => { 'test' => { 'target_dir' => 'bla' } } }
+                    }
+                    @cli.should_receive(:consolidated_report).and_return(report)
+                    @cli.should_receive(:need_xunit_processing?)
+                        .with('bla', 'bla.html', force: false).once
+                        .and_return(true)
+                    @cli.should_receive(:system).explicitly
+                        .with('xunit-viewer', '--results=bla', '--output=bla.html')
+                        .once.and_return(true)
+                    @cli.process_test_results
+                end
+                it 'warns if xunit-viewer failed' do
+                    report = {
+                        'packages' => { 'a' => { 'test' => { 'target_dir' => 'bla' } } }
+                    }
+                    @cli.should_receive(:consolidated_report).and_return(report)
+                    @cli.should_receive(:need_xunit_processing?).and_return(true)
+                    @cli.should_receive(:system).explicitly.and_return(false)
+                    flexmock(Autoproj).should_receive(:warn)
+                                      .with('xunit-viewer conversion failed for \'bla\'')
+                                      .once
+                    @cli.process_test_results
+                end
             end
         end
 

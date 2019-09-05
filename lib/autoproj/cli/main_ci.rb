@@ -45,6 +45,20 @@ module Autoproj
                              'exec', '--interactive=f', *args, *built_package_names)
             end
 
+            desc 'process-test-results [ARGS]',
+                 'Process test output (assumed to be in JUnit XML) through xunit-viewer'
+            option :force, desc: 're-generates existing output', default: false
+            option :xunit_viewer, desc: 'path to xunit-viewer', default: 'xunit-viewer'
+            def process_test_results
+                require 'autoproj/cli/ci'
+                cli = CI.new
+                cli.validate_options([], options.dup)
+                cli.process_test_results(
+                    force: options[:force],
+                    xunit_viewer: options[:xunit_viewer]
+                )
+            end
+
             desc 'status DIR', 'Display the cache status'
             option :cache, type: 'string',
                            desc: 'path to the build cache'
