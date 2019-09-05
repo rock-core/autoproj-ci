@@ -32,12 +32,14 @@ module Autoproj
             def test(*args)
                 require 'autoproj/cli/ci'
                 cli = CI.new
-                cli.validate_options([], options)
+                cli.validate_options([], options.dup)
                 report = cli.consolidated_report
 
                 built_packages = report['packages'].find_all do |_name, info|
                     info['build'] && !info['build']['cached'] && info['build']['success']
                 end
+                return if built_packages.empty?
+
                 built_package_names = built_packages.map(&:first)
                 Process.exec(Gem.ruby, $PROGRAM_NAME, 'test',
                              'exec', '--interactive=f', *args, *built_package_names)
