@@ -357,6 +357,13 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                     }, report
                 )
             end
+            it 'ignores metadata from cache pull for non-pulled packages' do
+                make_cache_pull 'build' => { 'invoked' => true }
+                make_installation_manifest
+                @cli.create_report(dir = make_tmpdir)
+                report = JSON.parse(File.read(File.join(dir, 'report.json')))
+                assert_equal({ 'packages' => { 'a' => {} } }, report)
+            end
             it 'copies each package log directory contents to logs/' do
                 make_installation_manifest
 

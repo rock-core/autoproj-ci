@@ -271,14 +271,15 @@ module Autoproj
                 # information from the other phase reports
                 cache_report_path = File.join(@ws.root_dir, 'cache-pull.json')
                 result = load_report(cache_report_path, 'cache_pull_report')['packages']
-                result.each_value do |info|
-                    next unless info.delete('cached')
+                result.delete_if do |_name, info|
+                    next(true) unless info.delete('cached')
 
                     PHASES.each do |phase_name|
                         if (phase_info = info[phase_name])
                             phase_info['cached'] = true
                         end
                     end
+                    false
                 end
 
                 new_reports.each do |phase_name, path|
