@@ -103,7 +103,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
 
         describe 'push' do
             before do
-                make_build_report
+                FileUtils.mkdir_p @ws.log_dir
             end
 
             it 'pushes packages that are not already in the cache' do
@@ -128,12 +128,10 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 )
             end
             it 'does nothing if there is no build report' do
-                FileUtils.rm_f @ws.build_report_path
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?
             end
             it 'does nothing if there is a report but it contains no build info' do
-                FileUtils.rm_f @ws.build_report_path
                 make_import_report
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?
@@ -155,45 +153,46 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 assert results.empty?, 'packages were pushed that should '\
                                        "not have: #{results}"
             end
-            it 'ignores packages that are already in the cache' do
+            it 'updates packages whose cache entry was not used' do
+                make_build_report
                 make_archive('a', 'TEST')
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 results = @cli.cache_push(@archive_dir)
-                assert_equal({ 'a' => { 'updated' => false, 'fingerprint' => 'TEST' } },
+                assert_equal({ 'a' => { 'updated' => true, 'fingerprint' => 'TEST' } },
                              results)
+
+                system('tar', 'xzf', 'TEST', chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal 'prefix', File.read(
+                    File.join(@archive_dir, @pkg.name, 'contents')
+                )
+            end
+            it 'ignores packages which were not built during this run' do
+                make_archive('a', 'TEST')
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                make_cache_pull 'build' => { 'success' => true }
+                results = @cli.cache_push(@archive_dir)
+                assert_equal({}, results)
 
                 system('tar', 'xzf', 'TEST', chdir: File.join(@archive_dir, @pkg.name))
                 assert_equal 'archive', File.read(
                     File.join(@archive_dir, @pkg.name, 'contents')
                 )
             end
-            it 'pushes a package that is already in the cache if it is listed in force' do
+            it 'ignores packages which build was not successful' do
                 make_archive('a', 'TEST')
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
-                make_build_report(add: { 'some' => 'flag' }, timestamp: (time = Time.now))
-                File.open(File.join(@archive_dir, @pkg.name, 'TEST.json'), 'w') do |io|
-                    io.write 'something'
-                end
-                results = @cli.cache_push(@archive_dir, force: ['a'])
-                assert_equal({ 'a' => { 'updated' => true, 'fingerprint' => 'TEST' } },
-                             results)
+                make_build_report add: { 'success' => false }
+                results = @cli.cache_push(@archive_dir)
+                assert_equal({}, results)
 
-                metadata = JSON.parse(
-                    File.read(File.join(@archive_dir, @pkg.name, 'TEST.json'))
-                )
-                assert_equal(
-                    {
-                        'build' => { 'invoked' => true, 'success' => true,
-                                     'timestamp' => time.to_s, 'some' => 'flag' }
-                    }, metadata
-                )
                 system('tar', 'xzf', 'TEST', chdir: File.join(@archive_dir, @pkg.name))
-                assert_equal 'prefix', File.read(
+                assert_equal 'archive', File.read(
                     File.join(@archive_dir, @pkg.name, 'contents')
                 )
             end
             it 'deals with race conditions on push' do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                make_build_report
 
                 flexmock(@cli).should_receive(:system).explicitly
                               .with('tar', 'czf', any, any, any)
@@ -214,6 +213,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
 
             it 'optionally reports its progress' do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                make_build_report
 
                 flexmock(@cli).should_receive(:puts).explicitly.once
                               .with('pushed a (TEST)')
@@ -260,7 +260,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 end
                 it "keeps cached #{report_type} info if there is no new info "\
                    "in the #{report_type} report" do
-                    make_cache_pull(true, report_type => { 'invoked' => false })
+                    make_cache_pull(true, report_type => { 'invoked' => true })
                     make_installation_manifest
                     @cli.create_report(dir = make_tmpdir)
                     report = JSON.parse(File.read(File.join(dir, 'report.json')))
@@ -270,7 +270,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                                 'a' => {
                                     report_type => {
                                         'cached' => true,
-                                        'invoked' => false
+                                        'invoked' => true
                                     }
                                 }
                             }
@@ -278,7 +278,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                     )
                 end
                 it "overwrites cache info with entries from the #{report_type} report" do
-                    make_cache_pull(true, report_type => { 'invoked' => false })
+                    make_cache_pull(true, report_type => { 'build' => { 'invoked' => false } })
                     make_report("#{report_type}_report",
                                 add: { 'some' => 'flag' },
                                 path: report_path_accessor.call(@ws))

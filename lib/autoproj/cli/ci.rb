@@ -70,15 +70,15 @@ module Autoproj
                 results
             end
 
-            def cache_push(dir, force: [], silent: true)
+            def cache_push(dir, silent: true)
                 packages = resolve_packages
                 metadata = consolidated_report['packages']
 
                 memo = {}
                 results = packages.each_with_object({}) do |pkg, h|
                     next unless (pkg_metadata = metadata[pkg.name])
-                    next unless pkg_metadata['build']
-                    next unless pkg_metadata['build']['success']
+                    next unless (build_info = pkg_metadata['build'])
+                    next if build_info['cached'] || !build_info['success']
 
                     # Remove cached flags before saving
                     pkg_metadata = pkg_metadata.dup
@@ -87,8 +87,7 @@ module Autoproj
                     end
 
                     state, fingerprint = push_package_to_cache(
-                        dir, pkg, pkg_metadata,
-                        force: force.include?(pkg.name), memo: memo
+                        dir, pkg, pkg_metadata, force: true, memo: memo
                     )
                     puts "pushed #{pkg.name} (#{fingerprint})" if state && !silent
 

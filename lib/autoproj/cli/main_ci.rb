@@ -127,9 +127,6 @@ module Autoproj
                  'cache-pull'
             option :report, type: 'string', default: 'cache-push.json',
                             desc: 'a file which describes what has been done'
-            option :force, type: :array, default: [],
-                           desc: 'push these packages even if it appears '\
-                                 'a cache entry exists for them'
             def cache_push(dir)
                 dir = File.expand_path(dir)
 
