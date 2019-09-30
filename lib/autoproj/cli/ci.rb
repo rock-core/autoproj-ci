@@ -166,7 +166,7 @@ module Autoproj
                 finalize_setup([], non_imported_packages: :ignore)
 
                 report = consolidated_report
-                FileUtils.mkdir_p dir
+                FileUtils.mkdir_p(dir)
                 File.open(File.join(dir, 'report.json'), 'w') do |io|
                     JSON.dump(report, io)
                 end
@@ -177,7 +177,7 @@ module Autoproj
 
                 # Pre-create the logs, or cp_r will have a different behavior
                 # if the directory exists or not
-                FileUtils.mkdir_p logs
+                FileUtils.mkdir_p(logs)
                 installation_manifest.each_package do |pkg|
                     glob = Dir.glob(File.join(pkg.logdir, '*'))
                     FileUtils.cp_r(glob, logs) if File.directory?(pkg.logdir)
@@ -219,7 +219,7 @@ module Autoproj
                 tests_invoked = metadata['test'] && metadata['test']['invoked']
                 return [false, fingerprint, metadata] if tests_enabled && !tests_invoked
 
-                FileUtils.mkdir_p pkg.prefix
+                FileUtils.mkdir_p(pkg.prefix)
                 result = system('tar', 'xzf', path, chdir: pkg.prefix, out: '/dev/null')
                 raise "tar failed when pulling cache file for #{pkg.name}" unless result
 
@@ -231,10 +231,10 @@ module Autoproj
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
                 temppath = "#{path}.#{Process.pid}.#{rand(256)}"
 
-                FileUtils.mkdir_p File.dirname(path)
+                FileUtils.mkdir_p(File.dirname(path))
                 if force || !File.file?("#{path}.json")
                     File.open(temppath, 'w') { |io| JSON.dump(metadata, io) }
-                    FileUtils.mv temppath, "#{path}.json"
+                    FileUtils.mv(temppath, "#{path}.json")
                 end
 
                 return [false, fingerprint] if !force && File.file?(path)
@@ -243,7 +243,7 @@ module Autoproj
                                 chdir: pkg.prefix, out: '/dev/null')
                 raise "tar failed when pushing cache file for #{pkg.name}" unless result
 
-                FileUtils.mv temppath, path
+                FileUtils.mv(temppath, path)
                 [true, fingerprint]
             end
 
