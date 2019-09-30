@@ -62,10 +62,9 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
             it 'optionally reports its progress' do
                 make_archive('a', 'TEST')
 
-                flexmock(@cli).should_receive(:puts).explicitly.once
-                              .with('pulled a (TEST)')
-                @cli.should_receive(:puts).explicitly.once
-                    .with('1 hits, 0 misses')
+                flexmock(Autoproj)
+                Autoproj.should_receive(:info).once.with('pulled a (TEST)')
+                Autoproj.should_receive(:info).once.with('1 hits, 0 misses')
                 @cli.cache_pull(@archive_dir, silent: false)
             end
         end
@@ -215,10 +214,10 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 make_build_report
 
-                flexmock(@cli).should_receive(:puts).explicitly.once
-                              .with('pushed a (TEST)')
-                @cli.should_receive(:puts).explicitly.once
-                    .with('1 updated packages, 0 reused entries')
+                flexmock(Autoproj)
+                Autoproj.should_receive(:info).once.with('pushed a (TEST)')
+                Autoproj.should_receive(:info).once
+                        .with('1 updated packages, 0 reused entries')
                 @cli.cache_push(@archive_dir, silent: false)
             end
         end

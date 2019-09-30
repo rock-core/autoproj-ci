@@ -54,7 +54,9 @@ module Autoproj
 
                     state, fingerprint, metadata =
                         pull_package_from_cache(dir, pkg, memo: memo)
-                    puts "pulled #{pkg.name} (#{fingerprint})" if state && !silent
+                    if state && !silent
+                        Autoproj.info "pulled #{pkg.name} (#{fingerprint})"
+                    end
 
                     h[pkg.name] = metadata.merge(
                         'cached' => state,
@@ -64,7 +66,7 @@ module Autoproj
 
                 unless silent
                     hit = results.count { |_, info| info['cached'] }
-                    puts "#{hit} hits, #{results.size - hit} misses"
+                    Autoproj.info "#{hit} hits, #{results.size - hit} misses"
                 end
 
                 results
@@ -89,7 +91,9 @@ module Autoproj
                     state, fingerprint = push_package_to_cache(
                         dir, pkg, pkg_metadata, force: true, memo: memo
                     )
-                    puts "pushed #{pkg.name} (#{fingerprint})" if state && !silent
+                    if state && !silent
+                        Autoproj.info "pushed #{pkg.name} (#{fingerprint})"
+                    end
 
                     h[pkg.name] = {
                         'updated' => state,
@@ -99,7 +103,8 @@ module Autoproj
 
                 unless silent
                     hit = results.count { |_, info| info['updated'] }
-                    puts "#{hit} updated packages, #{results.size - hit} reused entries"
+                    Autoproj.info "#{hit} updated packages, #{results.size - hit} "\
+                                  'reused entries'
                 end
 
                 results
