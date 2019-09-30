@@ -201,6 +201,9 @@ module Autoproj
                 }
             end
 
+            class PullError < RuntimeError
+            end
+
             def pull_package_from_cache(dir, pkg, memo: {})
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
@@ -220,8 +223,9 @@ module Autoproj
                 return [false, fingerprint, metadata] if tests_enabled && !tests_invoked
 
                 FileUtils.mkdir_p(pkg.prefix)
-                result = system('tar', 'xzf', path, chdir: pkg.prefix, out: '/dev/null')
-                raise "tar failed when pulling cache file for #{pkg.name}" unless result
+                unless system('tar', 'xzf', path, chdir: pkg.prefix, out: '/dev/null')
+                    raise PullError, "tar failed when pulling cache file for #{pkg.name}"
+                end
 
                 [true, fingerprint, metadata]
             end
