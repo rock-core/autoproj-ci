@@ -59,13 +59,14 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
 
                 refute File.directory?(@pkg.autobuild.prefix)
             end
-            it 'optionally reports its progress' do
+            it 'reports its progress' do
                 make_archive('a', 'TEST')
 
-                flexmock(Autoproj)
-                Autoproj.should_receive(:info).once.with('pulled a (TEST)')
-                Autoproj.should_receive(:info).once.with('1 hits, 0 misses')
-                @cli.cache_pull(@archive_dir, silent: false)
+                flexmock(@pkg.autobuild).should_receive(:message)
+                                        .once.with('%s: pulled TEST', :green)
+                flexmock(Autoproj).should_receive(:message)
+                                  .once.with('1 hits, 0 misses')
+                @cli.cache_pull(@archive_dir)
             end
         end
 
@@ -210,15 +211,15 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 )
             end
 
-            it 'optionally reports its progress' do
+            it 'reports its progress' do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 make_build_report
 
-                flexmock(Autoproj)
-                Autoproj.should_receive(:info).once.with('pushed a (TEST)')
-                Autoproj.should_receive(:info).once
-                        .with('1 updated packages, 0 reused entries')
-                @cli.cache_push(@archive_dir, silent: false)
+                flexmock(@pkg.autobuild).should_receive(:message).once
+                                        .with('%s: pushed TEST', :green)
+                flexmock(Autoproj).should_receive(:message).once
+                                  .with('1 updated packages, 0 reused entries')
+                @cli.cache_push(@archive_dir)
             end
         end
 

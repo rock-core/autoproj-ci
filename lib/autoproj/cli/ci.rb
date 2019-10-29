@@ -38,12 +38,13 @@ module Autoproj
                 end
             end
 
-            def cache_pull(dir, ignore: [], silent: true)
+            def cache_pull(dir, ignore: [])
                 packages = resolve_packages
 
                 memo = {}
                 results = packages.each_with_object({}) do |pkg, h|
                     if ignore.include?(pkg.name)
+                        pkg.message '%s: ignored by command line'
                         fingerprint = pkg.fingerprint(memo: memo)
                         h[pkg.name] = {
                             'cached' => false,
@@ -54,8 +55,10 @@ module Autoproj
 
                     state, fingerprint, metadata =
                         pull_package_from_cache(dir, pkg, memo: memo)
-                    if state && !silent
-                        Autoproj.info "pulled #{pkg.name} (#{fingerprint})"
+                    if state
+                        pkg.message "%s: pulled #{fingerprint}", :green
+                    else
+                        pkg.message "%s: #{fingerprint} not in cache"
                     end
 
                     h[pkg.name] = metadata.merge(
@@ -64,23 +67,31 @@ module Autoproj
                     )
                 end
 
-                unless silent
-                    hit = results.count { |_, info| info['cached'] }
-                    Autoproj.info "#{hit} hits, #{results.size - hit} misses"
-                end
+                hit = results.count { |_, info| info['cached'] }
+                Autoproj.message "#{hit} hits, #{results.size - hit} misses"
 
                 results
             end
 
-            def cache_push(dir, silent: true)
+            def cache_push(dir)
                 packages = resolve_packages
                 metadata = consolidated_report['packages']
 
                 memo = {}
                 results = packages.each_with_object({}) do |pkg, h|
-                    next unless (pkg_metadata = metadata[pkg.name])
-                    next unless (build_info = pkg_metadata['build'])
-                    next if build_info['cached'] || !build_info['success']
+                    if !(pkg_metadata = metadata[pkg.name])
+                        pkg.message '%s: no metadata in build report', :magenta
+                        next
+                    elsif !(build_info = pkg_metadata['build'])
+                        pkg.message '%s: no build info in build report', :magenta
+                        next
+                    elsif build_info['cached']
+                        pkg.message '%s: was pulled from cache, not pushing'
+                        next
+                    elsif !build_info['success']
+                        pkg.message '%s: build failed, not pushing', :magenta
+                        next
+                    end
 
                     # Remove cached flags before saving
                     pkg_metadata = pkg_metadata.dup
@@ -91,8 +102,10 @@ module Autoproj
                     state, fingerprint = push_package_to_cache(
                         dir, pkg, pkg_metadata, force: true, memo: memo
                     )
-                    if state && !silent
-                        Autoproj.info "pushed #{pkg.name} (#{fingerprint})"
+                    if state
+                        pkg.message "%s: pushed #{fingerprint}", :green
+                    else
+                        pkg.message "%s: #{fingerprint} already in cache"
                     end
 
                     h[pkg.name] = {
@@ -101,11 +114,9 @@ module Autoproj
                     }
                 end
 
-                unless silent
-                    hit = results.count { |_, info| info['updated'] }
-                    Autoproj.info "#{hit} updated packages, #{results.size - hit} "\
-                                  'reused entries'
-                end
+                hit = results.count { |_, info| info['updated'] }
+                Autoproj.message "#{hit} updated packages, #{results.size - hit} "\
+                                 'reused entries'
 
                 results
             end
@@ -220,6 +231,7 @@ module Autoproj
                 # Do not pull packages for which we should run tests
                 tests_enabled = pkg.test_utility.enabled?
                 tests_invoked = metadata['test'] && metadata['test']['invoked']
+                pkg.message "%s: the package has tests that have never been invoked, forcing rebuild"
                 return [false, fingerprint, metadata] if tests_enabled && !tests_invoked
 
                 FileUtils.mkdir_p(pkg.prefix)

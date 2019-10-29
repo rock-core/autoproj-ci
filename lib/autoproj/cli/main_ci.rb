@@ -16,6 +16,8 @@ module Autoproj
             def build(*args)
                 if (cache = options.delete(:cache))
                     cache = File.expand_path(cache)
+                    require 'autoproj/cli/base'
+                    Autoproj::CLI::Base.validate_options(args, options)
                     results = cache_pull(cache, ignore: options.delete(:cache_ignore))
                     pulled_packages = results
                                       .map { |name, pkg| name if pkg['cached'] }
@@ -95,27 +97,25 @@ module Autoproj
 
                 require 'autoproj/cli/ci'
                 results = nil
-                Autoproj.report(silent: true) do
-                    cli = CI.new
-                    _, options = cli.validate_options(dir, self.options)
-                    report = options.delete(:report)
 
-                    # options[:ignore] is not set if we call from another
-                    # command, e.g. build
-                    ignore += (options.delete(:ignore) || [])
-                    results = cli.cache_pull(*dir, silent: false,
-                                                   ignore: ignore, **options)
+                cli = CI.new
+                _, options = cli.validate_options(dir, self.options)
+                report = options.delete(:report)
 
-                    if report && !report.empty?
-                        File.open(report, 'w') do |io|
-                            JSON.dump(
-                                {
-                                    'cache_pull_report' => {
-                                        'packages' => results
-                                    }
-                                }, io
-                            )
-                        end
+                # options[:ignore] is not set if we call from another
+                # command, e.g. build
+                ignore += (options.delete(:ignore) || [])
+                results = cli.cache_pull(*dir, ignore: ignore, **options)
+
+                if report && !report.empty?
+                    File.open(report, 'w') do |io|
+                        JSON.dump(
+                            {
+                                'cache_pull_report' => {
+                                    'packages' => results
+                                }
+                            }, io
+                        )
                     end
                 end
                 results
@@ -131,24 +131,22 @@ module Autoproj
                 dir = File.expand_path(dir)
 
                 require 'autoproj/cli/ci'
-                Autoproj.report(silent: true) do
-                    cli = CI.new
+                cli = CI.new
 
-                    _, options = cli.validate_options(dir, self.options)
-                    report = options.delete(:report)
+                _, options = cli.validate_options(dir, self.options)
+                report = options.delete(:report)
 
-                    results = cli.cache_push(*dir, silent: false, **options)
+                results = cli.cache_push(*dir, **options)
 
-                    if report && !report.empty?
-                        File.open(report, 'w') do |io|
-                            JSON.dump(
-                                {
-                                    'cache_push_report' => {
-                                        'packages' => results
-                                    }
-                                }, io
-                            )
-                        end
+                if report && !report.empty?
+                    File.open(report, 'w') do |io|
+                        JSON.dump(
+                            {
+                                'cache_push_report' => {
+                                    'packages' => results
+                                }
+                            }, io
+                        )
                     end
                 end
             end
@@ -161,11 +159,9 @@ module Autoproj
                 path = File.expand_path(path)
 
                 require 'autoproj/cli/ci'
-                Autoproj.report(silent: true) do
-                    cli = CI.new
-                    args, options = cli.validate_options(path, self.options)
-                    cli.create_report(*args, **options)
-                end
+                cli = CI.new
+                args, options = cli.validate_options(path, self.options)
+                cli.create_report(*args, **options)
             end
         end
     end
