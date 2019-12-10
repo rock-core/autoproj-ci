@@ -152,7 +152,7 @@ module Autoproj
             end
 
             desc 'build-report PATH',
-                 'Create a tarball containing all the information about this '\
+                 'create a directory containing all the information about this '\
                  'build, such as cache information (from cache-pull), Autoproj\'s '\
                  'build report and installation manifest, and the package\'s logfiles'
             def create_report(path)
