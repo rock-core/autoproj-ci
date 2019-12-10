@@ -42,6 +42,34 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 contents = File.read(File.join(@pkg.autobuild.prefix, 'contents'))
                 assert_equal 'archive', contents.strip
             end
+            it 'does not pull a package if its tests are enabled but have never been invoked' do
+                make_archive('a', 'TEST')
+                make_metadata('a', 'TEST', test: {})
+                flexmock(@pkg.autobuild.test_utility, enabled?: true)
+
+                results = @cli.cache_pull(@archive_dir)
+                assert_equal(
+                    {
+                        'a' => {
+                            'cached' => false, 'fingerprint' => 'TEST'
+                        }
+                    }, results
+                )
+            end
+            it 'reports if it does not pull the package because of missing tests' do
+                make_archive('a', 'TEST')
+                make_metadata('a', 'TEST', timestamp: Time.now, test: {})
+                flexmock(@pkg.autobuild.test_utility, enabled?: true)
+
+                flexmock(@pkg.autobuild)
+                    .should_receive(:message)
+                    .once.with('%s: has tests that have never been invoked, '\
+                               'not pulling from cache')
+                flexmock(@pkg.autobuild)
+                    .should_receive(:message)
+                    .once.with('%s: TEST not in cache, or not pulled from cache')
+                @cli.cache_pull(@archive_dir)
+            end
             it 'does not pull an already built package specified in ignore' do
                 make_archive('a', 'TEST')
 
@@ -497,17 +525,21 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
             end
         end
 
-        def make_metadata(package_name, fingerprint, add: {}, timestamp: Time.now)
+        def make_metadata(
+            package_name, fingerprint,
+            add: {}, test: nil, timestamp: Time.now
+        )
             path = File.join(@archive_dir, package_name, "#{fingerprint}.json")
             FileUtils.mkdir_p File.dirname(path)
 
+            metadata = {
+                'build' => { 'timestamp' => timestamp.to_s, 'invoked' => true }
+                            .merge(add)
+            }
+            metadata.merge!('test' => test) if test
+
             File.open(path, 'w') do |io|
-                JSON.dump(
-                    {
-                        'build' => { 'timestamp' => timestamp.to_s, 'invoked' => true }
-                                   .merge(add)
-                    }, io
-                )
+                JSON.dump(metadata, io)
             end
         end
 

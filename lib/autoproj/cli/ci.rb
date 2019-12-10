@@ -58,7 +58,8 @@ module Autoproj
                     if state
                         pkg.message "%s: pulled #{fingerprint}", :green
                     else
-                        pkg.message "%s: #{fingerprint} not in cache"
+                        pkg.message "%s: #{fingerprint} not in cache, "\
+                                    'or not pulled from cache'
                     end
 
                     h[pkg.name] = metadata.merge(
@@ -231,8 +232,11 @@ module Autoproj
                 # Do not pull packages for which we should run tests
                 tests_enabled = pkg.test_utility.enabled?
                 tests_invoked = metadata['test'] && metadata['test']['invoked']
-                pkg.message "%s: the package has tests that have never been invoked, forcing rebuild"
-                return [false, fingerprint, metadata] if tests_enabled && !tests_invoked
+                if tests_enabled && !tests_invoked
+                    pkg.message '%s: has tests that have never '\
+                                'been invoked, not pulling from cache'
+                    return [false, fingerprint, {}]
+                end
 
                 FileUtils.mkdir_p(pkg.prefix)
                 unless system('tar', 'xzf', path, chdir: pkg.prefix, out: '/dev/null')
