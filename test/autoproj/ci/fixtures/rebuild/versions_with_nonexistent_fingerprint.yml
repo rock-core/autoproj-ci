@@ -1,0 +1,4 @@
+- base/types:
+    fingerprint: some-nonexistent-fingerprint
+- drivers/iodrivers_base:
+    fingerprint: some-other-fingerprint
