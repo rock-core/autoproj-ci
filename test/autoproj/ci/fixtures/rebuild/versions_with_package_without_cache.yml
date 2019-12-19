@@ -1,0 +1,4 @@
+- non/existent/package:
+    fingerprint: some-fingerprint
+- drivers/iodrivers_base:
+    fingerprint: some-other-fingerprint
