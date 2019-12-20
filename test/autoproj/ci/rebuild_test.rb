@@ -85,7 +85,7 @@ module Autoproj::CI # rubocop:disable Style/ClassAndModuleChildren, Style/Docume
                 @packages = []
                 flexmock(Autoproj::PackageManagers::AptDpkgManager)
                     .should_receive(:parse_dpkg_status)
-                    .with('/path/to/dpkg/status')
+                    .with('/path/to/dpkg/status', virtual: false)
                     .and_return { [@packages, []] }
             end
 

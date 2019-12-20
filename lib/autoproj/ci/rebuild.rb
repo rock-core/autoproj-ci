@@ -33,7 +33,7 @@ module Autoproj
 
             def self.dpkg_create_package_install(status_path, rules)
                 installed, = Autoproj::PackageManagers::AptDpkgManager
-                             .parse_dpkg_status(status_path)
+                             .parse_dpkg_status(status_path, virtual: false)
 
                 installed.find_all do |pkg_name|
                     package_matches_rules?(pkg_name, rules)
