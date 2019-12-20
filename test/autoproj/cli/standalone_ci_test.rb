@@ -37,6 +37,27 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 end
                 assert File.file?(File.join(out_dir, output))
             end
+
+            it 'optionally prepares a workspace-like folder to provide with an execution environment' do
+                config_root = File.join(__dir__, '..', 'ci', 'fixtures', 'rebuild')
+                cache_root = File.join(config_root, 'cache')
+                output = File.join(make_tmpdir, 'output.tar.gz')
+
+                StandaloneCI.start(['rebuild-root', config_root, cache_root, output,
+                                    '--workspace', 'ws'])
+
+                out = make_tmpdir
+                system('tar', 'xzf', output, chdir: out, out: '/dev/null')
+                assert_equal 'export ENV=value',
+                             File.read(File.join(out, 'ws', 'env.sh')).strip
+
+                # Unfortunately, we can't chroot from the user.
+                # Just check that the source and exec lines point to the right files
+                autoproj_exec =
+                    File.readlines(File.join(out, 'ws', '.autoproj', 'autoproj'))
+                        .map(&:strip)
+                assert(autoproj_exec.find { |l| l == '. /ws/env.sh' })
+            end
         end
     end
 end

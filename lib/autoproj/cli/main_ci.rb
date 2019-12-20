@@ -168,44 +168,6 @@ module Autoproj
                     cli.create_report(*args, **options)
                 end
             end
-
-            no_commands do
-                def prepare_workspace(config_dir, workspace_dir)
-                    if File.file?(envsh = File.join(config_dir, 'env.sh'))
-                        filter_envsh(envsh)
-                        generate_autoproj_stub(workspace_dir, '.autoproj')
-                    end
-
-                    if File.file?(file = File.join(config_dir, 'source.yml'))
-                        FileUtils.cp file, File.join(workspace_dir, '.autoproj')
-                    end
-
-                    if File.file?(file = File.join(config_dir, 'installation-manifest'))
-                        FileUtils.cp file, File.join(workspace_dir, 'installation-manifest')
-                    end
-                end
-
-                AUTOPROJ_STUB_PATH = File.join(__dir__, 'autoproj-stub.sh.erb').freeze
-
-                def fitler_envsh(source_path, workspace_dir)
-                    filtered = File.readlines(source_path)
-                               .find_all { |l| !/^(source|\.)/.match?(l) }
-                    File.open(File.join(workspace_dir, 'env.sh'), 'w') do |io|
-                        io.write(filtered.join)
-                    end
-                end
-
-                def generate_autoproj_stub(workspace_dir)
-                    dot_autoproj = File.join(workspace_dir, '.autoproj')
-                    FileUtils.mkdir_p dot_autoproj
-                    erb = ERB.new(File.read(AUTOPROJ_STUB_PATH))
-                    erb.location = [AUTOPROJ_STUB_PATH, 0]
-                    File.open(File.join(dot_autoproj, 'autoproj'), 'w') do |io|
-                        io.write erb.result_with_hash(workspace_dir: workspace_dir)
-                    end
-                end
-            end
         end
     end
 end
-
