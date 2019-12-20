@@ -38,6 +38,20 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 assert File.file?(File.join(out_dir, output))
             end
 
+            it 'sets the file\'s owner and group to root' do
+                output = File.join(make_tmpdir, 'output.tar.gz')
+
+                StandaloneCI.start(['rebuild-root', @fixtures_path, @cache_root, output])
+
+                io = IO.popen(['tar', 'xzf', output, '--to-command', 'sh -c env'])
+                _, status = Process.waitpid2(io.pid)
+                flunk("listing UIDs for #{output} failed") unless status.success?
+
+                lines = io.readlines.map(&:chomp)
+                assert_equal ['TAR_UID=0'], lines.grep(/TAR_UID/).uniq
+                assert_equal ['TAR_GID=0'], lines.grep(/TAR_GID/).uniq
+            end
+
             it 'optionally prepares a workspace-like folder to provide with an execution environment' do
                 output = File.join(make_tmpdir, 'output.tar.gz')
 
