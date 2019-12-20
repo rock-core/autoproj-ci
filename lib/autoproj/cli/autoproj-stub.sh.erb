@@ -1,0 +1,12 @@
+#! /bin/sh -e
+
+if test "x$1" != "xexec"; then
+    echo "This is a minimal stub of autoproj meant only to"\
+         "allow for running `autoproj exec`" >& 2
+    exit 1
+fi
+
+shift
+
+. <%= workspace_dir %>/env.sh
+exec "$@"
