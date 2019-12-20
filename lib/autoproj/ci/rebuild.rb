@@ -31,6 +31,22 @@ module Autoproj
                 end
             end
 
+            def self.dpkg_create_package_install(status_path, rules)
+                installed, = Autoproj::PackageManagers::AptDpkgManager
+                             .parse_dpkg_status(status_path)
+
+                installed.find_all do |pkg_name|
+                    package_matches_rules?(pkg_name, rules)
+                end
+            end
+
+            def self.package_matches_rules?(pkg_name, rules)
+                rules.each do |mode, r|
+                    return mode if r.match?(pkg_name)
+                end
+                true
+            end
+
             # Unpack a single package in its place within the
             def self.unpack_package(output_path, cache_root_path, name, pkg, fingerprint)
                 cache_file_path = File.join(cache_root_path, name, fingerprint)

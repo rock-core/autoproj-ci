@@ -38,7 +38,40 @@ module Autoproj
                 FileUtils.rm_rf(dir) if dir && File.directory?(dir)
             end
 
-            no_commands do
+            desc 'dpkg-filter-status STATUS_PATH [RULES]',
+                 'outputs the list of APT packages to install based on a dpkg status '\
+                 'file and a set of inclusion/exclusion rules of the form "+ pattern" '\
+                 'and "- pattern"'
+            option :file, desc: 'read the rules from a file',
+                          type: :string
+
+            def dpkg_filter_status(status_path, *rules)
+                rules += File.readlines(options[:file]).map(&:strip) if options[:file]
+                rules = rules.map do |line|
+                    next if line.empty? || line.start_with?('#')
+
+                    parse_rule(line)
+                end
+
+                packages = Autoproj::CI::Rebuild
+                           .dpkg_create_package_install(status_path, rules)
+                puts packages.join(' ')
+            end
+
+            no_commands do # rubocop:disable Metrics/BlockLength
+                def parse_rule(line)
+                    unless (m = /^([+-])\s+(.*)/.match(line))
+                        raise ArgumentError, "invalid rule line '#{line}'"
+                    end
+
+                    mode = (m[1] == '+')
+                    begin
+                        [mode, Regexp.new(m[2])]
+                    rescue RegexpError => e
+                        raise ArgumentError, "invalid regexp in '#{line}': #{e}"
+                    end
+                end
+
                 def prepare_workspace(config_dir, output_dir, workspace_dir)
                     FileUtils.mkdir_p File.join(output_dir, workspace_dir, '.autoproj')
 
