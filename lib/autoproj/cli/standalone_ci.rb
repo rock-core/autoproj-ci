@@ -28,6 +28,7 @@ module Autoproj
                     prepare_workspace(config_dir, File.join(dir, options[:workspace]))
                 end
 
+                output = File.expand_path(output)
                 unless system('tar', 'czf', output, '.', chdir: dir)
                     raise "failed to create #{output}"
                 end
