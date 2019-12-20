@@ -25,6 +25,18 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 )
                 assert File.file?(iodrivers_base_file)
             end
+
+            it 'handles relative paths' do
+                config_root = File.join(__dir__, '..', 'ci', 'fixtures', 'rebuild')
+                cache_root = File.join(config_root, 'cache')
+
+                out_dir = make_tmpdir
+                output = 'output.tar.gz'
+                Dir.chdir(out_dir) do
+                    StandaloneCI.start(['rebuild-root', config_root, cache_root, output])
+                end
+                assert File.file?(File.join(out_dir, output))
+            end
         end
     end
 end
