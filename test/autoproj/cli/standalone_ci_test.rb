@@ -52,7 +52,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 # Unfortunately, we can't chroot from the user.
                 # Just check that the source and exec lines point to the right files
                 autoproj_exec =
-                    File.readlines(File.join(out, 'ws', '.autoproj', 'autoproj'))
+                    File.readlines(File.join(out, 'ws', '.autoproj', 'bin', 'autoproj'))
                         .map(&:strip)
                 assert(autoproj_exec.find { |l| l == '. /ws/env.sh' })
             end

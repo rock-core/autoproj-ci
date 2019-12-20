@@ -106,7 +106,8 @@ module Autoproj
 
                 def generate_autoproj_stub(output_dir, workspace_dir)
                     dot_autoproj = File.join(output_dir, workspace_dir, '.autoproj')
-                    autoproj_path = File.join(dot_autoproj, 'autoproj')
+                    FileUtils.mkdir File.join(dot_autoproj, 'bin')
+                    autoproj_path = File.join(dot_autoproj, 'bin', 'autoproj')
 
                     erb = ERB.new(File.read(AUTOPROJ_STUB_PATH))
                     erb.location = [AUTOPROJ_STUB_PATH, 0]
