@@ -79,5 +79,39 @@ module Autoproj::CI # rubocop:disable Style/ClassAndModuleChildren, Style/Docume
                 )
             end
         end
+
+        describe '.dpkg_create_package_install' do
+            before do
+                @packages = []
+                flexmock(Autoproj::PackageManagers::AptDpkgManager)
+                    .should_receive(:parse_dpkg_status)
+                    .with('/path/to/dpkg/status')
+                    .and_return { [@packages, []] }
+            end
+
+            it 'extracts the list of installed packages and returns it' do
+                @packages << 'pkg1' << 'pkg2'
+                result = Rebuild.dpkg_create_package_install(
+                    '/path/to/dpkg/status', []
+                )
+                assert_equal %w[pkg1 pkg2], result
+            end
+
+            it 'filters out packages matching an exclusion rule' do
+                @packages << 'pkg1' << 'pkg2'
+                result = Rebuild.dpkg_create_package_install(
+                    '/path/to/dpkg/status', [[false, /2$/]]
+                )
+                assert_equal %w[pkg1], result
+            end
+
+            it 'first matching rule wins' do
+                @packages << 'pkg1' << 'pkg2'
+                result = Rebuild.dpkg_create_package_install(
+                    '/path/to/dpkg/status', [[true, /pkg/], [false, /2$/]]
+                )
+                assert_equal %w[pkg1 pkg2], result
+            end
+        end
     end
 end

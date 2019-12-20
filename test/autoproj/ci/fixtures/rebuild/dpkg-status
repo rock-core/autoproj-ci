@@ -1,0 +1,11 @@
+Package: pkg1
+Status: install ok installed
+
+Package: pkg2
+Status: install ok installed
+
+Package: pkg1-dev
+Status: install ok installed
+
+Package: pkg2-dev
+Status: install ok installed
