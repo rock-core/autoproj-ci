@@ -1,0 +1,7 @@
+- pkg_set:github:/orocos-toolchain/autoproj.git:
+    commit: some_commit
+- base/types:
+    fingerprint: some-fingerprint
+- drivers/iodrivers_base:
+    fingerprint: some-other-fingerprint
+

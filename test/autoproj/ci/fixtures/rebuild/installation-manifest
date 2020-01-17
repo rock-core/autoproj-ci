@@ -1,0 +1,8 @@
+- name: base/types
+  prefix: /path/to/base/types/prefix
+- name: drivers/iodrivers_base
+  prefix: /path/to/drivers/iodrivers_base/prefix
+- name: invalid/cache
+  prefix: /path/to/invalid/cache/prefix
+- name: non/existent/package
+  prefix: /path/to/drivers/iodrivers_base/prefix

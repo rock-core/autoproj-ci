@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require 'autoproj'
+require 'autoproj/cli/standalone_ci'
 
 module Autoproj
     module CLI
         # CLI interface for autoproj-ci
-        class MainCI < Thor
+        class MainCI < StandaloneCI
             desc 'build [ARGS]', 'Just like autoproj build, but can use a build cache'
             option :cache, type: 'string',
                            desc: 'path to the build cache'
