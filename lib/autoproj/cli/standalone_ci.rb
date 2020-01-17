@@ -43,9 +43,10 @@ module Autoproj
                  'outputs the list of APT packages to install based on a dpkg status '\
                  'file and a set of inclusion/exclusion rules of the form "+ pattern" '\
                  'and "- pattern"'
+            option :orig, desc: 'a status file whose installed packages are removed',
+                          type: :string
             option :file, desc: 'read the rules from a file',
                           type: :string
-
             def dpkg_filter_status(status_path, *rules)
                 rules += File.readlines(options[:file]).map(&:strip) if options[:file]
                 rules = rules.map do |line|
@@ -54,9 +55,10 @@ module Autoproj
                     parse_rule(line)
                 end
 
-                packages = Autoproj::CI::Rebuild
-                           .dpkg_create_package_install(status_path, rules)
                 puts packages.join(' ')
+                packages = Autoproj::CI::Rebuild.dpkg_create_package_install(
+                    status_path, rules, orig: options[:orig]
+                )
             end
 
             no_commands do # rubocop:disable Metrics/BlockLength

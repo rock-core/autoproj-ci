@@ -31,9 +31,15 @@ module Autoproj
                 end
             end
 
-            def self.dpkg_create_package_install(status_path, rules)
+            def self.dpkg_create_package_install(status_path, rules, orig: nil)
                 installed, = Autoproj::PackageManagers::AptDpkgManager
                              .parse_dpkg_status(status_path, virtual: false)
+
+                if orig
+                    orig_installed, = Autoproj::PackageManagers::AptDpkgManager
+                                      .parse_dpkg_status(orig, virtual: false)
+                    installed -= orig_installed
+                end
 
                 installed.find_all do |pkg_name|
                     package_matches_rules?(pkg_name, rules)

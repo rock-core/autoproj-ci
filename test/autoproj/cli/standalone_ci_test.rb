@@ -75,6 +75,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
         describe 'dpkg-filter-status' do
             before do
                 @status_path = File.join(@fixtures_path, 'dpkg-status')
+                @orig_status_path = File.join(@fixtures_path, 'dpkg-status.orig')
             end
 
             it 'returns the list of installed packages when there are no rules' do
@@ -82,6 +83,14 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                     StandaloneCI.start(['dpkg-filter-status', @status_path])
                 end
                 assert_equal 'pkg1 pkg2 pkg1-dev pkg2-dev', out.chomp
+            end
+
+            it 'allows to filter out the installed packages from another status file' do
+                out, = capture_io do
+                    StandaloneCI.start(['dpkg-filter-status', @status_path,
+                                        '--orig', @orig_status_path])
+                end
+                assert_equal %w[pkg1-dev pkg2-dev].join("\n"), out.chomp
             end
 
             it 'excludes packages that match an exclusion rule' do
