@@ -82,7 +82,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 out, = capture_io do
                     StandaloneCI.start(['dpkg-filter-status', @status_path])
                 end
-                assert_equal 'pkg1 pkg2 pkg1-dev pkg2-dev', out.chomp
+                assert_equal %w[pkg1 pkg2 pkg1-dev pkg2-dev].join("\n"), out.chomp
             end
 
             it 'allows to filter out the installed packages from another status file' do
@@ -97,7 +97,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 out, = capture_io do
                     StandaloneCI.start(['dpkg-filter-status', @status_path, '- -dev$'])
                 end
-                assert_equal 'pkg1 pkg2', out.chomp
+                assert_equal %w[pkg1 pkg2].join("\n"), out.chomp
             end
 
             it 'uses the first matching rule to decide on a package' do
@@ -105,7 +105,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                     StandaloneCI.start(['dpkg-filter-status', @status_path,
                                         '+ pkg1', '- -dev$'])
                 end
-                assert_equal 'pkg1 pkg2 pkg1-dev', out.chomp
+                assert_equal %w[pkg1 pkg2 pkg1-dev].join("\n"), out.chomp
             end
 
             it 'can read rules from a file' do
@@ -118,7 +118,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                         StandaloneCI.start(['dpkg-filter-status', @status_path,
                                             '--file', io.path])
                     end
-                    assert_equal 'pkg1 pkg2 pkg1-dev', out.chomp
+                    assert_equal %w[pkg1 pkg2 pkg1-dev].join("\n"), out.chomp
                 end
             end
         end

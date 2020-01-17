@@ -55,10 +55,10 @@ module Autoproj
                     parse_rule(line)
                 end
 
-                puts packages.join(' ')
                 packages = Autoproj::CI::Rebuild.dpkg_create_package_install(
                     status_path, rules, orig: options[:orig]
                 )
+                puts packages.join("\n")
             end
 
             no_commands do # rubocop:disable Metrics/BlockLength
