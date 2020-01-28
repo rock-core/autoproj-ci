@@ -31,7 +31,7 @@ module Autoproj
                 end
 
                 output = File.expand_path(output)
-                unless system('tar', 'czf', output, '--owner=root', '--group=root',
+                unless system('tar', 'caf', output, '--owner=root', '--group=root',
                               '.', chdir: dir)
                     raise "failed to create #{output}"
                 end
