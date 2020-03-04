@@ -257,7 +257,11 @@ module Autoproj
                     FileUtils.mv(temppath, "#{path}.json")
                 end
 
-                return [false, fingerprint] if !force && File.file?(path)
+                if !force && File.file?(path)
+                    # Update modification time for the cleanup process
+                    FileUtils.touch(path)
+                    return [false, fingerprint]
+                end
 
                 result = system('tar', 'czf', temppath, '.',
                                 chdir: pkg.prefix, out: '/dev/null')
@@ -265,6 +269,29 @@ module Autoproj
 
                 FileUtils.mv(temppath, path)
                 [true, fingerprint]
+            end
+
+            def cleanup_build_cache(dir, size_limit)
+                all_files = Find.enum_for(:find, dir).map do |path|
+                    next unless File.file?(path) && File.file?("#{path}.json")
+
+                    [path, File.stat(path)]
+                end.compact
+
+                total_size = all_files.map { |_, s| s.size }.sum
+                lru = all_files.sort_by { |_, s| s.mtime }
+
+                while total_size > size_limit
+                    path, stat = lru.shift
+                    Autoproj.message "removing #{path} (size=#{stat.size}, mtime=#{stat.mtime})"
+
+                    FileUtils.rm_f path
+                    FileUtils.rm_f "#{path}.json"
+                    total_size -= stat.size
+                end
+
+                Autoproj.message format("current build cache size: %.1f GB", Float(total_size) / 1_000_000_000)
+                total_size
             end
 
             def load_built_flags
