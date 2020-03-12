@@ -139,7 +139,7 @@ module Autoproj
                 _, options = cli.validate_options(dir, self.options)
                 report = options.delete(:report)
 
-                results = cli.cache_push(*dir, **options)
+                results = cli.cache_push(dir, **options)
 
                 if report && !report.empty?
                     File.open(report, 'w') do |io|
@@ -152,6 +152,20 @@ module Autoproj
                         )
                     end
                 end
+            end
+
+            desc 'build-cache-cleanup CACHE_DIR',
+                 'Remove the oldest entries in the cache until it is under a given size limit'
+            option :max_size, type: 'numeric', default: 10,
+                              desc: 'approximate target size limit (in GB, defaults to 10)'
+            def build_cache_cleanup(dir)
+                dir = File.expand_path(dir)
+
+                require 'autoproj/cli/ci'
+                cli = CI.new
+
+                _, options = cli.validate_options(dir, self.options)
+                cli.cleanup_build_cache(dir, options[:max_size] * 1_000_000_000)
             end
 
             desc 'build-report PATH',

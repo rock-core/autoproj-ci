@@ -488,6 +488,50 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
             end
         end
 
+        describe '#cleanup_build_cache' do
+            before do
+                @cache_dir = make_tmpdir
+                @paths = [create_file('a', 1024),
+                          create_file('b', 1024),
+                          create_file('c', 1024),
+                          create_file('d', 1024)]
+            end
+
+            it 'does nothing if the cache size is above the limit' do
+                result = @cli.cleanup_build_cache @cache_dir, 5000
+                @paths.each do |p|
+                    assert File.exist?(p)
+                    assert File.exist?("#{p}.json")
+                end
+                assert_equal 4096, result
+            end
+
+            it 'removes the oldest entries to go below the cache limit' do
+                sleep 1.5
+                FileUtils.touch @paths[1]
+                FileUtils.touch @paths[3]
+                result = @cli.cleanup_build_cache @cache_dir, 3000
+                [@paths[1], @paths[3]].each do |p|
+                    assert File.exist?(p)
+                    assert File.exist?("#{p}.json")
+                end
+                [@paths[0], @paths[2]].each do |p|
+                    refute File.exist?(p)
+                    refute File.exist?("#{p}.json")
+                end
+                assert_equal 2048, result
+            end
+
+            def create_file(path, size)
+                path = File.join(@cache_dir, path)
+                File.open(path, 'w') do |io|
+                    io.write " " * size
+                end
+                FileUtils.touch "#{path}.json"
+                path
+            end
+        end
+
         def make_git(dir, file_content: File.basename(dir))
             FileUtils.mkdir_p dir
             system('git', 'init', chdir: dir)
