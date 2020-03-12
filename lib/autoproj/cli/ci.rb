@@ -338,7 +338,7 @@ module Autoproj
                     report = load_report(path, "#{phase_name}_report")
                     report['packages'].each do |pkg_name, pkg_info|
                         result[pkg_name] ||= {}
-                        if pkg_info['invoked']
+                        if pkg_info['invoked'] || !pkg_info.fetch('enabled', true)
                             result[pkg_name][phase_name] = pkg_info.merge(
                                 'cached' => false,
                                 'timestamp' => report['timestamp']
