@@ -259,7 +259,9 @@ module Autoproj
 
                 if !force && File.file?(path)
                     # Update modification time for the cleanup process
+                    puts "< #{path} #{File.stat(path).mtime}"
                     FileUtils.touch(path)
+                    puts "          #{File.stat(path).mtime}"
                     return [false, fingerprint]
                 end
 
