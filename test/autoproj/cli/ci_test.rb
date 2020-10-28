@@ -42,6 +42,15 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 contents = File.read(File.join(@pkg.autobuild.prefix, "contents"))
                 assert_equal "archive", contents.strip
             end
+            it "updates the mtime of pulled entries" do
+                now = Time.now
+                path = make_archive("a", "TEST")
+                FileUtils.touch path, mtime: Time.at(10)
+                make_metadata("a", "TEST")
+
+                @cli.cache_pull(@archive_dir)
+                assert File.mtime(path).tv_sec >= now.tv_sec
+            end
             it "does not pull a package if its tests are enabled but "\
                "have never been invoked" do
                 make_archive("a", "TEST")
@@ -181,6 +190,11 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 results = @cli.cache_push(@archive_dir)
                 assert results.empty?, "packages were pushed that should "\
                                        "not have: #{results}"
+            end
+            it "ignores packages which were pulled from cache" do
+                make_cache_pull({ "build" => { "success" => true } })
+                flexmock(@cli).should_receive(:push_package_to_cache).never
+                @cli.cache_push(@archive_dir)
             end
             it "updates packages whose cache entry was not used" do
                 make_build_report
@@ -603,6 +617,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
             File.open(path, "w") do |archive_io|
                 archive_io.write gziped_archive
             end
+            path
         end
 
         def make_metadata(
