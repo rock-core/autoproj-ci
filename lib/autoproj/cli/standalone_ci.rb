@@ -61,6 +61,8 @@ module Autoproj
                 puts packages.join("\n")
             end
 
+            AUTOPROJ_STUB_PATH = File.join(__dir__, "autoproj-stub.sh.erb").freeze
+
             no_commands do # rubocop:disable Metrics/BlockLength
                 def parse_rule(line)
                     unless (m = /^([+-])\s+(.*)/.match(line))
@@ -95,9 +97,9 @@ module Autoproj
                             File.join(output_dir, workspace_dir, "installation-manifest")
                         )
                     end
-                end
 
-                AUTOPROJ_STUB_PATH = File.join(__dir__, "autoproj-stub.sh.erb").freeze
+                    nil
+                end
 
                 def filter_envsh(source_path, output_dir, workspace_dir)
                     filtered = File.readlines(source_path)

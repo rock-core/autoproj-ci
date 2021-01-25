@@ -283,7 +283,9 @@ module Autoproj
 
                 while total_size > size_limit
                     path, stat = lru.shift
-                    Autoproj.message "removing #{path} (size=#{stat.size}, mtime=#{stat.mtime})"
+                    Autoproj.message(
+                        "removing #{path} (size=#{stat.size}, mtime=#{stat.mtime})"
+                    )
 
                     FileUtils.rm_f path
                     FileUtils.rm_f "#{path}.json"

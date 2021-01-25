@@ -141,23 +141,25 @@ module Autoproj
 
                 results = cli.cache_push(dir, **options)
 
-                if report && !report.empty?
-                    File.open(report, "w") do |io|
-                        JSON.dump(
-                            {
-                                "cache_push_report" => {
-                                    "packages" => results
-                                }
-                            }, io
-                        )
-                    end
+                return unless report && !report.empty?
+
+                File.open(report, "w") do |io|
+                    JSON.dump(
+                        {
+                            "cache_push_report" => {
+                                "packages" => results
+                            }
+                        }, io
+                    )
                 end
             end
 
             desc "build-cache-cleanup CACHE_DIR",
-                 "Remove the oldest entries in the cache until it is under a given size limit"
-            option :max_size, type: "numeric", default: 10,
-                              desc: "approximate target size limit (in GB, defaults to 10)"
+                 "Remove the oldest entries in the cache until "\
+                 "it is under a given size limit"
+            option :max_size,
+                   type: "numeric", default: 10,
+                   desc: "approximate target size limit (in GB, defaults to 10)"
             def build_cache_cleanup(dir)
                 dir = File.expand_path(dir)
 

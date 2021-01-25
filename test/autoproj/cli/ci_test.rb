@@ -42,7 +42,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 contents = File.read(File.join(@pkg.autobuild.prefix, "contents"))
                 assert_equal "archive", contents.strip
             end
-            it "does not pull a package if its tests are enabled but have never been invoked" do
+            it "does not pull a package if its tests are enabled but "\
+               "have never been invoked" do
                 make_archive("a", "TEST")
                 make_metadata("a", "TEST", test: {})
                 flexmock(@pkg.autobuild.test_utility, enabled?: true)
@@ -197,7 +198,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
             it "ignores packages which were not built during this run" do
                 make_archive("a", "TEST")
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
-                make_cache_pull "build" => { "success" => true }
+                make_cache_pull({ "build" => { "success" => true } })
                 results = @cli.cache_push(@archive_dir)
                 assert_equal({}, results)
 
@@ -259,7 +260,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 Timecop.return
             end
 
-            def self.consolidated_report_single_behavior(
+            def self.consolidated_report_single_behavior( # rubocop:disable Metrics/AbcSize
                 report_type,
                 report_path_accessor:
             )
@@ -288,7 +289,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 end
                 it "keeps cached #{report_type} info if there is no new info "\
                    "in the #{report_type} report" do
-                    make_cache_pull(true, report_type => { "invoked" => true })
+                    make_cache_pull({ report_type => { "invoked" => true } })
                     make_installation_manifest
                     @cli.create_report(dir = make_tmpdir)
                     report = JSON.parse(File.read(File.join(dir, "report.json")))
@@ -306,8 +307,9 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                     )
                 end
                 it "overwrites cache info with entries from the #{report_type} report" do
-                    make_cache_pull(true,
-                                    report_type => { "build" => { "invoked" => false } })
+                    make_cache_pull(
+                        { report_type => { "build" => { "invoked" => false } } }
+                    )
                     make_report("#{report_type}_report",
                                 add: { "some" => "flag" },
                                 path: report_path_accessor.call(@ws))
@@ -387,11 +389,11 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 )
             end
             it "ignores metadata from cache pull for non-pulled packages" do
-                make_cache_pull "build" => { "invoked" => true }
+                make_cache_pull({ "build" => { "invoked" => true } }, cached: false)
                 make_installation_manifest
                 @cli.create_report(dir = make_tmpdir)
                 report = JSON.parse(File.read(File.join(dir, "report.json")))
-                assert_equal({ "packages" => { "a" => {} } }, report)
+                assert_equal({ "packages" => {} }, report)
             end
             it "copies each package log directory contents to logs/" do
                 make_installation_manifest
@@ -620,7 +622,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
             end
         end
 
-        def make_cache_pull(cached = true, new_info = {})
+        def make_cache_pull(new_info = {}, cached: true)
             File.open(File.join(@ws.root_dir, "cache-pull.json"), "w") do |io|
                 JSON.dump(
                     {
