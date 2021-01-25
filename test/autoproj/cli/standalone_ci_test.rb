@@ -1,9 +1,10 @@
 # frozen_string_literal: true
+
 require "test_helper"
 require "thor"
 require "autoproj/cli/main_ci"
 
-module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Documentation
+module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
     describe StandaloneCI do
         before do
             @fixtures_path = File.join(__dir__, "..", "ci", "fixtures", "rebuild")
@@ -33,7 +34,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                 out_dir = make_tmpdir
                 output = "output.tar.gz"
                 Dir.chdir(out_dir) do
-                    StandaloneCI.start(["rebuild-root", @fixtures_path, @cache_root, output])
+                    StandaloneCI.start(["rebuild-root", @fixtures_path, @cache_root,
+                                        output])
                 end
                 assert File.file?(File.join(out_dir, output))
             end

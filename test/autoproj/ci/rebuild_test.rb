@@ -4,7 +4,7 @@ require "test_helper"
 require "rubygems/package"
 require "autoproj/ci/rebuild"
 
-module Autoproj::CI # rubocop:disable Style/ClassAndModuleChildren, Style/Documentation
+module Autoproj::CI # rubocop:disable Style/ClassAndModuleChildren
     module Rebuild
         describe ".prepare_synthetic_buildroot" do
             before do

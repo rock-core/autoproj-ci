@@ -4,8 +4,8 @@ require "test_helper"
 require "thor"
 require "autoproj/cli/main_ci"
 
-module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Documentation
-    describe MainCI do # rubocop:disable Metrics/BlockLength
+module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
+    describe MainCI do
         before do
             @ws = ws_create
             @archive_dir = make_tmpdir

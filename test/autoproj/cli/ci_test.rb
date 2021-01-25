@@ -4,8 +4,8 @@ require "test_helper"
 require "rubygems/package"
 require "timecop"
 
-module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Documentation
-    describe CI do # rubocop:disable Metrics/BlockLength
+module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
+    describe CI do
         before do
             @ws = ws_create
             @archive_dir = make_tmpdir
@@ -306,7 +306,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                     )
                 end
                 it "overwrites cache info with entries from the #{report_type} report" do
-                    make_cache_pull(true, report_type => { "build" => { "invoked" => false } })
+                    make_cache_pull(true,
+                                    report_type => { "build" => { "invoked" => false } })
                     make_report("#{report_type}_report",
                                 add: { "some" => "flag" },
                                 path: report_path_accessor.call(@ws))
@@ -444,7 +445,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
         describe "#postprocess_test_results" do
             describe "xunit processing" do
                 it "skips packages that do not have tests" do
-                    report = { "packages" => { "a" => { } } }
+                    report = { "packages" => { "a" => {} } }
                     @cli.should_receive(:consolidated_report).and_return(report)
                     @cli.should_receive(:system).explicitly.never
                     @cli.process_test_results
@@ -578,7 +579,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
 
             metadata = {
                 "build" => { "timestamp" => timestamp.to_s, "invoked" => true }
-                            .merge(add)
+                       .merge(add)
             }
             metadata.merge!("test" => test) if test
 
