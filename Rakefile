@@ -7,4 +7,8 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
+require "rubocop/rake_task"
+RuboCop::RakeTask.new
+task "test" => "rubocop"
+
 task :default => :test
