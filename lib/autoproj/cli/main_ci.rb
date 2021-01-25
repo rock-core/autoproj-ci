@@ -1,61 +1,61 @@
 # frozen_string_literal: true
 
-require 'autoproj'
-require 'autoproj/cli/standalone_ci'
+require "autoproj"
+require "autoproj/cli/standalone_ci"
 
 module Autoproj
     module CLI
         # CLI interface for autoproj-ci
         class MainCI < StandaloneCI
-            desc 'build [ARGS]', 'Just like autoproj build, but can use a build cache'
-            option :cache, type: 'string',
-                           desc: 'path to the build cache'
+            desc "build [ARGS]", "Just like autoproj build, but can use a build cache"
+            option :cache, type: "string",
+                           desc: "path to the build cache"
             option :cache_ignore, type: :array, default: [],
-                                  desc: 'list of packages to not pull from cache'
-            option :report, type: 'string', default: 'cache-pull.json',
-                            desc: 'a file which describes what has been pulled'
+                                  desc: "list of packages to not pull from cache"
+            option :report, type: "string", default: "cache-pull.json",
+                            desc: "a file which describes what has been pulled"
             def build(*args)
                 if (cache = options.delete(:cache))
                     cache = File.expand_path(cache)
-                    require 'autoproj/cli/base'
+                    require "autoproj/cli/base"
                     Autoproj::CLI::Base.validate_options(args, options)
                     results = cache_pull(cache, ignore: options.delete(:cache_ignore))
                     pulled_packages = results
-                                      .map { |name, pkg| name if pkg['cached'] }
+                                      .map { |name, pkg| name if pkg["cached"] }
                                       .compact
-                    not_args = ['--not', *pulled_packages] unless pulled_packages.empty?
+                    not_args = ["--not", *pulled_packages] unless pulled_packages.empty?
                 end
 
                 args << "--progress=#{options[:progress] ? 't' : 'f'}"
                 args << "--color=#{options[:color] ? 't' : 'f'}"
-                Process.exec(Gem.ruby, $PROGRAM_NAME, 'build',
-                             '--interactive=f', *args, *not_args)
+                Process.exec(Gem.ruby, $PROGRAM_NAME, "build",
+                             "--interactive=f", *args, *not_args)
             end
 
-            desc 'test [ARGS]', 'Like autoproj test, but selects only packages '\
-                                'that have been built'
+            desc "test [ARGS]", "Like autoproj test, but selects only packages "\
+                                "that have been built"
             def test(*args)
-                require 'autoproj/cli/ci'
+                require "autoproj/cli/ci"
                 cli = CI.new
                 cli.validate_options([], options.dup)
                 report = cli.consolidated_report
 
-                built_packages = report['packages'].find_all do |_name, info|
-                    info['build'] && !info['build']['cached'] && info['build']['success']
+                built_packages = report["packages"].find_all do |_name, info|
+                    info["build"] && !info["build"]["cached"] && info["build"]["success"]
                 end
                 return if built_packages.empty?
 
                 built_package_names = built_packages.map(&:first)
-                Process.exec(Gem.ruby, $PROGRAM_NAME, 'test',
-                             'exec', '--interactive=f', *args, *built_package_names)
+                Process.exec(Gem.ruby, $PROGRAM_NAME, "test",
+                             "exec", "--interactive=f", *args, *built_package_names)
             end
 
-            desc 'process-test-results [ARGS]',
-                 'Process test output (assumed to be in JUnit XML) through xunit-viewer'
-            option :force, desc: 're-generates existing output', default: false
-            option :xunit_viewer, desc: 'path to xunit-viewer', default: 'xunit-viewer'
+            desc "process-test-results [ARGS]",
+                 "Process test output (assumed to be in JUnit XML) through xunit-viewer"
+            option :force, desc: "re-generates existing output", default: false
+            option :xunit_viewer, desc: "path to xunit-viewer", default: "xunit-viewer"
             def process_test_results
-                require 'autoproj/cli/ci'
+                require "autoproj/cli/ci"
                 cli = CI.new
                 cli.validate_options([], options.dup)
                 cli.process_test_results(
@@ -64,12 +64,12 @@ module Autoproj
                 )
             end
 
-            desc 'status DIR', 'Display the cache status'
-            option :cache, type: 'string',
-                           desc: 'path to the build cache'
+            desc "status DIR", "Display the cache status"
+            option :cache, type: "string",
+                           desc: "path to the build cache"
             def status(dir)
                 cache = File.expand_path(dir)
-                require 'autoproj/cli/ci'
+                require "autoproj/cli/ci"
                 cli = CI.new
                 cli.validate_options(dir, options)
                 results = cli.cache_state(cache)
@@ -77,28 +77,28 @@ module Autoproj
                     status = results[name]
                     fields = []
                     fields <<
-                        if status['cached']
-                            Autoproj.color('cache hit', :green)
+                        if status["cached"]
+                            Autoproj.color("cache hit", :green)
                         else
-                            Autoproj.color('cache miss', :red)
+                            Autoproj.color("cache miss", :red)
                         end
                     fields << "fingerprint=#{status['fingerprint']}"
                     puts "#{name}: #{fields.join(', ')}"
                 end
             end
 
-            desc 'cache-pull CACHE_DIR',
-                 'This command gets relevant artifacts from a build cache and '\
-                 'populates the current workspace\'s prefix with them. It is meant '\
-                 'to be executed after a full checkout of the workspace'
-            option :report, type: 'string', default: 'cache-pull.json',
-                            desc: 'a file which describes what has been done'
+            desc "cache-pull CACHE_DIR",
+                 "This command gets relevant artifacts from a build cache and "\
+                 "populates the current workspace's prefix with them. It is meant "\
+                 "to be executed after a full checkout of the workspace"
+            option :report, type: "string", default: "cache-pull.json",
+                            desc: "a file which describes what has been done"
             option :ignore, type: :array, default: [],
-                            desc: 'list of packages to not pull from cache'
+                            desc: "list of packages to not pull from cache"
             def cache_pull(dir, ignore: [])
                 dir = File.expand_path(dir)
 
-                require 'autoproj/cli/ci'
+                require "autoproj/cli/ci"
                 results = nil
 
                 cli = CI.new
@@ -111,11 +111,11 @@ module Autoproj
                 results = cli.cache_pull(*dir, ignore: ignore, **options)
 
                 if report && !report.empty?
-                    File.open(report, 'w') do |io|
+                    File.open(report, "w") do |io|
                         JSON.dump(
                             {
-                                'cache_pull_report' => {
-                                    'packages' => results
+                                "cache_pull_report" => {
+                                    "packages" => results
                                 }
                             }, io
                         )
@@ -124,16 +124,16 @@ module Autoproj
                 results
             end
 
-            desc 'cache-push CACHE_DIR',
-                 'This command writes the packages successfully built in the last '\
-                 'build to the given build cache, so that they can be reused with '\
-                 'cache-pull'
-            option :report, type: 'string', default: 'cache-push.json',
-                            desc: 'a file which describes what has been done'
+            desc "cache-push CACHE_DIR",
+                 "This command writes the packages successfully built in the last "\
+                 "build to the given build cache, so that they can be reused with "\
+                 "cache-pull"
+            option :report, type: "string", default: "cache-push.json",
+                            desc: "a file which describes what has been done"
             def cache_push(dir)
                 dir = File.expand_path(dir)
 
-                require 'autoproj/cli/ci'
+                require "autoproj/cli/ci"
                 cli = CI.new
 
                 _, options = cli.validate_options(dir, self.options)
@@ -142,11 +142,11 @@ module Autoproj
                 results = cli.cache_push(dir, **options)
 
                 if report && !report.empty?
-                    File.open(report, 'w') do |io|
+                    File.open(report, "w") do |io|
                         JSON.dump(
                             {
-                                'cache_push_report' => {
-                                    'packages' => results
+                                "cache_push_report" => {
+                                    "packages" => results
                                 }
                             }, io
                         )
@@ -154,28 +154,28 @@ module Autoproj
                 end
             end
 
-            desc 'build-cache-cleanup CACHE_DIR',
-                 'Remove the oldest entries in the cache until it is under a given size limit'
-            option :max_size, type: 'numeric', default: 10,
-                              desc: 'approximate target size limit (in GB, defaults to 10)'
+            desc "build-cache-cleanup CACHE_DIR",
+                 "Remove the oldest entries in the cache until it is under a given size limit"
+            option :max_size, type: "numeric", default: 10,
+                              desc: "approximate target size limit (in GB, defaults to 10)"
             def build_cache_cleanup(dir)
                 dir = File.expand_path(dir)
 
-                require 'autoproj/cli/ci'
+                require "autoproj/cli/ci"
                 cli = CI.new
 
                 _, options = cli.validate_options(dir, self.options)
                 cli.cleanup_build_cache(dir, options[:max_size] * 1_000_000_000)
             end
 
-            desc 'build-report PATH',
-                 'create a directory containing all the information about this '\
-                 'build, such as cache information (from cache-pull), Autoproj\'s '\
-                 'build report and installation manifest, and the package\'s logfiles'
+            desc "build-report PATH",
+                 "create a directory containing all the information about this "\
+                 "build, such as cache information (from cache-pull), Autoproj's "\
+                 "build report and installation manifest, and the package's logfiles"
             def create_report(path)
                 path = File.expand_path(path)
 
-                require 'autoproj/cli/ci'
+                require "autoproj/cli/ci"
                 cli = CI.new
                 args, options = cli.validate_options(path, self.options)
                 cli.create_report(*args, **options)

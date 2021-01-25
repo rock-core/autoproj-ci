@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'autoproj'
-require 'tmpdir'
+require "autoproj"
+require "tmpdir"
 
 module Autoproj
     module CI
@@ -26,7 +26,7 @@ module Autoproj
                         output_dir,
                         cache_root_path, name,
                         manifest.packages.fetch(name),
-                        entry.fetch('fingerprint')
+                        entry.fetch("fingerprint")
                     )
                 end
             end
@@ -63,8 +63,8 @@ module Autoproj
 
                 package_prefix = File.join(output_path, pkg.prefix)
                 FileUtils.mkdir_p(package_prefix)
-                unless system('tar', 'xzf', cache_file_path,
-                              chdir: package_prefix, out: '/dev/null')
+                unless system("tar", "xzf", cache_file_path,
+                              chdir: package_prefix, out: "/dev/null")
                     raise "failed to unpack #{cache_file_path} in #{package_prefix} "\
                           "for package #{name} failed"
                 end
