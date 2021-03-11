@@ -1,0 +1,16 @@
+Metrics/BlockLength:
+  Exclude:
+  - lib/autoproj/cli/ci.rb
+
+Metrics/AbcSize:
+  Exclude:
+  - lib/autoproj/cli/ci.rb
+  - lib/autoproj/cli/main_ci.rb
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+  - lib/autoproj/cli/ci.rb
+
+Metrics/PerceivedComplexity:
+  Exclude:
+  - lib/autoproj/cli/ci.rb

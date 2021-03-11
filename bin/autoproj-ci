@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
+# frozen_string_literal: true
 
-require 'autoproj/cli/standalone_ci'
+require "autoproj/cli/standalone_ci"
 Autoproj::CLI::StandaloneCI.start(ARGV)
-

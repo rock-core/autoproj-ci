@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'test_helper'
-require 'thor'
-require 'autoproj/cli/main_ci'
+require "test_helper"
+require "thor"
+require "autoproj/cli/main_ci"
 
-module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Documentation
-    describe MainCI do # rubocop:disable Metrics/BlockLength
+module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
+    describe MainCI do
         before do
             @ws = ws_create
             @archive_dir = make_tmpdir
@@ -13,15 +13,15 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
             @cli = CI.new(@ws)
         end
 
-        describe '#test' do
-            it 'filters out cached packages' do
+        describe "#test" do
+            it "filters out cached packages" do
                 report = {
-                    'packages' => {
-                        'a' => {
-                            'build' => { 'cached' => true, 'success' => true }
+                    "packages" => {
+                        "a" => {
+                            "build" => { "cached" => true, "success" => true }
                         },
-                        'b' => {
-                            'build' => { 'cached' => false, 'success' => true }
+                        "b" => {
+                            "build" => { "cached" => false, "success" => true }
                         }
                     }
                 }
@@ -29,20 +29,20 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                             .and_return(report)
                 flexmock(Process)
                     .should_receive(:exec).once
-                    .with(any, /autoproj/, 'test', 'exec', '--interactive=f', 'b')
+                    .with(Gem.ruby, "autoproj", "test", "exec", "--interactive=f", "b")
 
                 Dir.chdir(@ws.root_dir) do
-                    MainCI.start(['test'])
+                    MainCI.start(["test", "--autoproj=autoproj"])
                 end
             end
-            it 'filters out packages that are not successfully built' do
+            it "filters out packages that are not successfully built" do
                 report = {
-                    'packages' => {
-                        'a' => {
-                            'build' => { 'cached' => false, 'success' => false }
+                    "packages" => {
+                        "a" => {
+                            "build" => { "cached" => false, "success" => false }
                         },
-                        'b' => {
-                            'build' => { 'cached' => false, 'success' => true }
+                        "b" => {
+                            "build" => { "cached" => false, "success" => true }
                         }
                     }
                 }
@@ -50,23 +50,23 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren, Style/Docum
                             .and_return(report)
                 flexmock(Process)
                     .should_receive(:exec).once
-                    .with(any, /autoproj/, 'test', 'exec', '--interactive=f', 'b')
+                    .with(Gem.ruby, "autoproj", "test", "exec", "--interactive=f", "b")
 
-                Dir.chdir(@ws.root_dir) { MainCI.start(['test']) }
+                Dir.chdir(@ws.root_dir) { MainCI.start(["test", "--autoproj=autoproj"]) }
             end
-            it 'does not call autoproj test if there are no packages' do
+            it "does not call autoproj test if there are no packages" do
                 flexmock(CI).new_instances.should_receive(:consolidated_report)
-                            .and_return('packages' => {})
+                            .and_return("packages" => {})
                 flexmock(Process).should_receive(:exec).never
             end
-            it 'does not call autoproj test if all packages have been filtered out' do
+            it "does not call autoproj test if all packages have been filtered out" do
                 report = {
-                    'packages' => {
-                        'a' => {
-                            'build' => { 'cached' => false, 'success' => false }
+                    "packages" => {
+                        "a" => {
+                            "build" => { "cached" => false, "success" => false }
                         },
-                        'b' => {
-                            'build' => { 'cached' => false, 'success' => false }
+                        "b" => {
+                            "build" => { "cached" => false, "success" => false }
                         }
                     }
                 }

@@ -1,3 +1,8 @@
 inherit_gem:
   rubocop-rock: defaults.yml
 
+inherit_from: .rubocop_todo.yml
+
+Naming/FileName:
+  Exclude:
+    - lib/autoproj-ci.rb
