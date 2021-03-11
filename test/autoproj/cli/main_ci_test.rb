@@ -29,10 +29,10 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                             .and_return(report)
                 flexmock(Process)
                     .should_receive(:exec).once
-                    .with(any, /autoproj/, "test", "exec", "--interactive=f", "b")
+                    .with(Gem.ruby, "autoproj", "test", "exec", "--interactive=f", "b")
 
                 Dir.chdir(@ws.root_dir) do
-                    MainCI.start(["test"])
+                    MainCI.start(["test", "--autoproj=autoproj"])
                 end
             end
             it "filters out packages that are not successfully built" do
@@ -50,9 +50,9 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                             .and_return(report)
                 flexmock(Process)
                     .should_receive(:exec).once
-                    .with(any, /autoproj/, "test", "exec", "--interactive=f", "b")
+                    .with(Gem.ruby, "autoproj", "test", "exec", "--interactive=f", "b")
 
-                Dir.chdir(@ws.root_dir) { MainCI.start(["test"]) }
+                Dir.chdir(@ws.root_dir) { MainCI.start(["test", "--autoproj=autoproj"]) }
             end
             it "does not call autoproj test if there are no packages" do
                 flexmock(CI).new_instances.should_receive(:consolidated_report)

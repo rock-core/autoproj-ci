@@ -34,6 +34,7 @@ module Autoproj
 
             desc "test [ARGS]", "Like autoproj test, but selects only packages "\
                                 "that have been built"
+            option :autoproj, desc: "path to autoproj", type: :string, default: nil
             def test(*args)
                 require "autoproj/cli/ci"
                 cli = CI.new
@@ -46,7 +47,8 @@ module Autoproj
                 return if built_packages.empty?
 
                 built_package_names = built_packages.map(&:first)
-                Process.exec(Gem.ruby, $PROGRAM_NAME, "test",
+                program_name = options[:autoproj] || $PROGRAM_NAME
+                Process.exec(Gem.ruby, program_name, "test",
                              "exec", "--interactive=f", *args, *built_package_names)
             end
 
