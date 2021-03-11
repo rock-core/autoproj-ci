@@ -244,8 +244,10 @@ module Autoproj
                 end
 
                 begin
+                    puts "< #{path} #{File.stat(path).mtime}"
                     FileUtils.touch metadata_path, nocreate: true
                     FileUtils.touch path, nocreate: true
+                    puts "          #{File.stat(path).mtime}"
                 rescue Errno::ENOENT # rubocop:disable Lint/SuppressedException
                 end
                 [true, fingerprint, metadata]
