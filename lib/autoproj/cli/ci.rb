@@ -351,6 +351,50 @@ module Autoproj
                 end
                 { "packages" => result }
             end
+
+            PHASE_INVERSE_ORDER = %w[test build import].freeze
+
+            PACKAGE_SUCCESS = "success"
+            PACKAGE_FAILURE = "failure"
+            PACKAGE_SKIPPED = "skipped"
+            PackageState = Struct.new :name, :phase, :state, :cached do
+                def skipped?
+                    state == PACKAGE_SKIPPED
+                end
+
+                def success?
+                    state == PACKAGE_SUCCESS
+                end
+
+                def failure?
+                    state == PACKAGE_FAILURE
+                end
+
+                def cached?
+                    cached
+                end
+            end
+
+            # Compute the set of failed packages that have been pulled from cache
+            #
+            # @param [Hash] the consolidated report as returned by {#consolidated_report}
+            # @return [Array<Failure>]
+            def packages_states(consolidated_report)
+                consolidated_report["packages"].map do |name, phases|
+                    main_phase_name = PHASE_INVERSE_ORDER.find do |phase_name|
+                        phases[phase_name] && phases[phase_name]["invoked"]
+                    end
+
+                    if main_phase_name
+                        main_phase = phases[main_phase_name]
+                        state = main_phase["success"] ? PACKAGE_SUCCESS : PACKAGE_FAILURE
+                        PackageState.new(name, main_phase_name,
+                                         state, main_phase["cached"])
+                    else
+                        PackageState.new(name, nil, "skipped", false)
+                    end
+                end
+            end
         end
     end
 end

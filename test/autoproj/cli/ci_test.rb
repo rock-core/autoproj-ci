@@ -535,6 +535,39 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
             end
         end
 
+        describe "#packages_states" do
+            it "transforms the consolidated report into a list of package states" do
+                report = {
+                    "packages" => {
+                        "a" => {
+                            "test" => {},
+                            "build" => { "invoked" => true, "success" => true,
+                                         "cached" => false }
+                        },
+                        "b" => {
+                            "test" => {},
+                            "build" => { "invoked" => true, "success" => true,
+                                         "cached" => true }
+                        },
+                        "c" => {
+                            "test" => { "invoked" => true, "cached" => true },
+                            "build" => { "invoked" => true, "success" => false }
+                        },
+                        "d" => {}
+                    }
+                }
+
+                packages_states = @cli.packages_states(report).sort_by(&:name)
+                expected = [
+                    CI::PackageState.new("a", "build", "success", false),
+                    CI::PackageState.new("b", "build", "success", true),
+                    CI::PackageState.new("c", "test", "failure", true),
+                    CI::PackageState.new("d", nil, "skipped", false)
+                ]
+                assert_equal expected, packages_states
+            end
+        end
+
         def make_git(dir, file_content: File.basename(dir))
             FileUtils.mkdir_p dir
             system("git", "init", chdir: dir)
