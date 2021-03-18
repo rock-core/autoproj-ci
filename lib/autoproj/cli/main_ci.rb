@@ -184,6 +184,34 @@ module Autoproj
                 args, options = cli.validate_options(path, self.options)
                 cli.create_report(*args, **options)
             end
+
+            desc "result PATH",
+                 "exit with a code based on the results stored in the given "\
+                 "report dir, created by build-report"
+            option :exit_code,
+                   type: :numeric, default: 1,
+                   desc: "the exit code to use on failure"
+            def result(path)
+                path = File.expand_path(path)
+                report = JSON.parse(File.read(File.join(path, "report.json")))
+
+                require "autoproj/cli/ci"
+                cli = CI.new
+                failures = cli.packages_states(report)
+                              .find_all(&:failure?)
+                              .sort_by(&:name)
+
+                if failures.empty?
+                    puts "All packages built and tested successfully"
+                    exit 0
+                end
+
+                failures.each do |pkg_state|
+                    puts "#{pkg_state.name} failed during #{pkg_state.phase} "\
+                            "phase#{' (from cache)' if pkg_state.cached?}"
+                end
+                exit options[:exit_code]
+            end
         end
     end
 end

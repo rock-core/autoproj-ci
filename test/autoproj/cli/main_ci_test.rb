@@ -58,6 +58,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 flexmock(CI).new_instances.should_receive(:consolidated_report)
                             .and_return("packages" => {})
                 flexmock(Process).should_receive(:exec).never
+                Dir.chdir(@ws.root_dir) { MainCI.start(["test"]) }
             end
             it "does not call autoproj test if all packages have been filtered out" do
                 report = {
@@ -73,6 +74,83 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 flexmock(CI).new_instances.should_receive(:consolidated_report)
                             .and_return(report)
                 flexmock(Process).should_receive(:exec).never
+                Dir.chdir(@ws.root_dir) { MainCI.start(["test"]) }
+            end
+        end
+
+        describe "result" do
+            before do
+                flexmock(MainCI)
+                @report_dir = make_tmpdir
+            end
+
+            it "exits with 0 on success" do
+                write_report(
+                    {
+                        "packages" => {
+                            "a" => { "build" => {
+                                "invoked" => true, "cached" => false, "success" => true
+                            } },
+                            "b" => { "build" => {
+                                "invoked" => true, "cached" => false, "success" => true
+                            } }
+                        }
+                    }
+                )
+                MainCI.new_instances.should_receive(:exit).explicitly.with(0).once
+                      .and_throw(:exit)
+
+                catch(:exit) do
+                    Dir.chdir(@ws.root_dir) { MainCI.start(["result", @report_dir]) }
+                end
+            end
+
+            it "exits with 1 on cached failure" do
+                write_report(
+                    {
+                        "packages" => {
+                            "a" => { "build" => {
+                                "invoked" => true, "cached" => false, "success" => true
+                            } },
+                            "b" => { "build" => {
+                                "invoked" => true, "cached" => true, "success" => false
+                            } }
+                        }
+                    }
+                )
+                MainCI.new_instances.should_receive(:exit).explicitly.with(1).once
+                      .and_throw(:exit)
+
+                catch(:exit) do
+                    Dir.chdir(@ws.root_dir) { MainCI.start(["result", @report_dir]) }
+                end
+            end
+
+            it "exits with 1 on non-cached failure" do
+                write_report(
+                    {
+                        "packages" => {
+                            "a" => { "build" => {
+                                "invoked" => true, "cached" => false, "success" => true
+                            } },
+                            "b" => { "build" => {
+                                "invoked" => true, "cached" => false, "success" => false
+                            } }
+                        }
+                    }
+                )
+                MainCI.new_instances.should_receive(:exit).explicitly.with(1).once
+                      .and_throw(:exit)
+
+                catch(:exit) do
+                    Dir.chdir(@ws.root_dir) { MainCI.start(["result", @report_dir]) }
+                end
+            end
+
+            def write_report(report)
+                File.open(File.join(@report_dir, "report.json"), "w") do |io|
+                    JSON.dump(report, io)
+                end
             end
         end
     end
