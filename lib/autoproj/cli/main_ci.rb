@@ -172,7 +172,7 @@ module Autoproj
                 cli.cleanup_build_cache(dir, options[:max_size] * 1_000_000_000)
             end
 
-            desc "build-report PATH",
+            desc "create-report PATH",
                  "create a directory containing all the information about this "\
                  "build, such as cache information (from cache-pull), Autoproj's "\
                  "build report and installation manifest, and the package's logfiles"
