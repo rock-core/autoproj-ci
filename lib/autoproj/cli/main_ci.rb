@@ -54,7 +54,8 @@ module Autoproj
 
             desc "process-test-results [ARGS]",
                  "Process test output (assumed to be in JUnit XML) through xunit-viewer"
-            option :force, desc: "re-generates existing output", default: false
+            option :force, desc: "re-generates existing output",
+                           default: false, type: :boolean
             option :xunit_viewer, desc: "path to xunit-viewer", default: "xunit-viewer"
             def process_test_results
                 require "autoproj/cli/ci"
