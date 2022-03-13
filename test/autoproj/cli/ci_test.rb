@@ -70,6 +70,26 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
 
                 @cli.cache_pull(@archive_dir)
             end
+            it "removes the cache files if parsing the metadata file failed" do
+                path = File.join(@archive_dir, @pkg.name, "TEST")
+                make_archive("a", "TEST", file_content: "archive")
+                flexmock(@pkg.autobuild, logdir: make_tmpdir)
+                make_archive("a", "TEST.logs", file_content: "archive")
+                File.write("#{path}.json", "invalid_json")
+
+                results = @cli.cache_pull(@archive_dir)
+                assert_equal(
+                    {
+                        "a" => {
+                            "cached" => false, "fingerprint" => "TEST"
+                        }
+                    }, results
+                )
+
+                refute File.exist?(path)
+                refute File.exist?("#{path}.logs")
+                refute File.exist?("#{path}.json")
+            end
             it "removes the cache files if extracting the build files failed" do
                 path = File.join(@archive_dir, @pkg.name, "TEST")
                 FileUtils.mkdir_p File.dirname(path)
