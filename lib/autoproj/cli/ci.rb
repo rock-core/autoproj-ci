@@ -238,9 +238,9 @@ module Autoproj
                     return [false, fingerprint, {}]
                 end
 
-                FileUtils.mkdir_p(pkg.prefix)
-                unless system("tar", "xzf", path, chdir: pkg.prefix, out: "/dev/null")
-                    raise PullError, "tar failed when pulling cache file for #{pkg.name}"
+                extract_dir_tarball(pkg, pkg.prefix, path)
+                if File.file?("#{path}.logs")
+                    extract_dir_tarball(pkg, pkg.logdir, "#{path}.logs")
                 end
 
                 begin
@@ -251,13 +251,20 @@ module Autoproj
                 [true, fingerprint, metadata]
             end
 
+            def extract_dir_tarball(pkg, target_dir, path)
+                FileUtils.mkdir_p target_dir
+                return if system("tar", "xzf", path, chdir: target_dir, out: "/dev/null")
+
+                raise PullError, "tar failed when pulling #{target_dir} for #{pkg.name}"
+            end
+
             def push_package_to_cache(dir, pkg, metadata, force: false, memo: {})
                 fingerprint = pkg.fingerprint(memo: memo)
                 path = package_cache_path(dir, pkg, fingerprint: fingerprint, memo: memo)
-                temppath = "#{path}.#{Process.pid}.#{rand(256)}"
 
                 FileUtils.mkdir_p(File.dirname(path))
                 if force || !File.file?("#{path}.json")
+                    temppath = "#{path}.#{Process.pid}.#{rand(256)}"
                     File.open(temppath, "w") { |io| JSON.dump(metadata, io) }
                     FileUtils.mv(temppath, "#{path}.json")
                 end
@@ -268,12 +275,22 @@ module Autoproj
                     return [false, fingerprint]
                 end
 
+                create_dir_tarball(pkg, pkg.prefix, path)
+                if File.directory?(pkg.logdir)
+                    create_dir_tarball(pkg, pkg.logdir, "#{path}.logs")
+                end
+                [true, fingerprint]
+            end
+
+            def create_dir_tarball(pkg, source_dir, path)
+                temppath = "#{path}.#{Process.pid}.#{rand(256)}"
                 result = system("tar", "czf", temppath, ".",
-                                chdir: pkg.prefix, out: "/dev/null")
-                raise "tar failed when pushing cache file for #{pkg.name}" unless result
+                                chdir: source_dir, out: "/dev/null")
+                unless result
+                    raise "tar failed when caching #{source_dir} for #{pkg.name}"
+                end
 
                 FileUtils.mv(temppath, path)
-                [true, fingerprint]
             end
 
             def cleanup_build_cache(dir, size_limit)
