@@ -238,9 +238,19 @@ module Autoproj
                     return [false, fingerprint, {}]
                 end
 
-                extract_dir_tarball(pkg, pkg.prefix, path)
+                success = extract_dir_tarball(pkg, pkg.prefix, path)
                 if File.file?("#{path}.logs")
-                    extract_dir_tarball(pkg, pkg.logdir, "#{path}.logs")
+                    success &&=
+                        extract_dir_tarball(pkg, pkg.logdir, "#{path}.logs")
+                end
+
+                unless success
+                    Autoproj.warn "failed to extract cache files for #{pkg.name}, "\
+                                  "removing existing data"
+                    FileUtils.rm_f path
+                    FileUtils.rm_f "#{path}.json"
+                    FileUtils.rm_f "#{path}.logs"
+                    return [false, fingerprint, {}]
                 end
 
                 begin
@@ -253,9 +263,7 @@ module Autoproj
 
             def extract_dir_tarball(pkg, target_dir, path)
                 FileUtils.mkdir_p target_dir
-                return if system("tar", "xzf", path, chdir: target_dir, out: "/dev/null")
-
-                raise PullError, "tar failed when pulling #{target_dir} for #{pkg.name}"
+                system("tar", "xzf", path, chdir: target_dir, out: "/dev/null")
             end
 
             def push_package_to_cache(dir, pkg, metadata, force: false, memo: {})
