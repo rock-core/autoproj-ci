@@ -169,6 +169,8 @@ module Autoproj
                 cli = CI.new
 
                 _, options = cli.validate_options(dir, self.options)
+                return unless File.directory?(dir)
+
                 cli.cleanup_build_cache(dir, options[:max_size] * 1_000_000_000)
             end
 
