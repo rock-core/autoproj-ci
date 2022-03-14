@@ -243,6 +243,11 @@ module Autoproj
                     raise PullError, "tar failed when pulling cache file for #{pkg.name}"
                 end
 
+                begin
+                    FileUtils.touch metadata_path, nocreate: true
+                    FileUtils.touch path, nocreate: true
+                rescue Errno::ENOENT # rubocop:disable Lint/SuppressedException
+                end
                 [true, fingerprint, metadata]
             end
 
