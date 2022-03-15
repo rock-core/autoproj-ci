@@ -51,6 +51,86 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 @cli.cache_pull(@archive_dir)
                 assert File.mtime(path).tv_sec >= now.tv_sec
             end
+            it "separately pulls the package's cached logs" do
+                make_archive("a", "TEST")
+                # Use a mock here as cache_push calls the autoproj resolution logic
+                # (which will reset logdir)
+                flexmock(@pkg.autobuild, logdir: (logdir = make_tmpdir))
+                make_archive("a", "TEST.logs", file_content: "logs")
+                make_metadata("a", "TEST", timestamp: Time.now)
+
+                @cli.cache_pull(@archive_dir)
+                contents = File.read(File.join(logdir, "contents"))
+                assert_equal "logs", contents.strip
+            end
+            it "ignores a missing log cache" do
+                make_archive("a", "TEST")
+                flexmock(@pkg.autobuild, logdir: make_tmpdir)
+                make_metadata("a", "TEST", timestamp: Time.now)
+
+                @cli.cache_pull(@archive_dir)
+            end
+            it "removes the cache files if parsing the metadata file failed" do
+                path = File.join(@archive_dir, @pkg.name, "TEST")
+                make_archive("a", "TEST", file_content: "archive")
+                flexmock(@pkg.autobuild, logdir: make_tmpdir)
+                make_archive("a", "TEST.logs", file_content: "archive")
+                File.write("#{path}.json", "invalid_json")
+
+                results = @cli.cache_pull(@archive_dir)
+                assert_equal(
+                    {
+                        "a" => {
+                            "cached" => false, "fingerprint" => "TEST"
+                        }
+                    }, results
+                )
+
+                refute File.exist?(path)
+                refute File.exist?("#{path}.logs")
+                refute File.exist?("#{path}.json")
+            end
+            it "removes the cache files if extracting the build files failed" do
+                path = File.join(@archive_dir, @pkg.name, "TEST")
+                FileUtils.mkdir_p File.dirname(path)
+                FileUtils.touch path
+                flexmock(@pkg.autobuild, logdir: make_tmpdir)
+                make_archive("a", "TEST.logs", file_content: "logs")
+                make_metadata("a", "TEST", timestamp: Time.now)
+
+                results = @cli.cache_pull(@archive_dir)
+                assert_equal(
+                    {
+                        "a" => {
+                            "cached" => false, "fingerprint" => "TEST"
+                        }
+                    }, results
+                )
+
+                refute File.exist?(path)
+                refute File.exist?("#{path}.logs")
+                refute File.exist?("#{path}.json")
+            end
+            it "removes the cache files if extracting the log files failed" do
+                path = File.join(@archive_dir, @pkg.name, "TEST")
+                make_archive("a", "TEST", file_content: "archive")
+                flexmock(@pkg.autobuild, logdir: make_tmpdir)
+                FileUtils.touch "#{path}.logs"
+                make_metadata("a", "TEST", timestamp: Time.now)
+
+                results = @cli.cache_pull(@archive_dir)
+                assert_equal(
+                    {
+                        "a" => {
+                            "cached" => false, "fingerprint" => "TEST"
+                        }
+                    }, results
+                )
+
+                refute File.exist?(path)
+                refute File.exist?("#{path}.logs")
+                refute File.exist?("#{path}.json")
+            end
             it "does not pull a package if its tests are enabled but "\
                "have never been invoked" do
                 make_archive("a", "TEST")
@@ -164,6 +244,29 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 assert_equal "prefix", File.read(
                     File.join(@archive_dir, @pkg.name, "contents")
                 )
+            end
+            it "separately pushes the package's log directory" do
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                # Use a mock here as cache_push calls the autoproj resolution logic
+                # (which will reset logdir)
+                flexmock(@pkg.autobuild, logdir: make_tmpdir)
+                make_prefix(@pkg.autobuild.logdir, file_content: "logdir")
+                make_build_report(add: { "some" => "flag" }, timestamp: Time.now)
+
+                @cli.cache_push(@archive_dir)
+                assert File.exist?(File.join(@archive_dir, @pkg.name, "TEST.logs"))
+                system("tar", "xzf", "TEST.logs",
+                       chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal "logdir", File.read(
+                    File.join(@archive_dir, @pkg.name, "contents")
+                )
+            end
+            it "ignores a missing log directory" do
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                make_build_report(add: { "some" => "flag" }, timestamp: Time.now)
+
+                @cli.cache_push(@archive_dir)
+                refute File.exist?(File.join(@archive_dir, @pkg.name, "TEST.logs"))
             end
             it "does nothing if there is no build report" do
                 results = @cli.cache_push(@archive_dir)
