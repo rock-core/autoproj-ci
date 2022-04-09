@@ -15,11 +15,19 @@ module Autoproj
             option :report, type: "string", default: "cache-pull.json",
                             desc: "a file which describes what has been pulled"
             def build(*args)
-                if (cache = options.delete(:cache))
-                    cache = File.expand_path(cache)
+                if (cache = options[:cache]) || File.exist?(options[:report])
                     require "autoproj/cli/base"
                     Autoproj::CLI::Base.validate_options(args, options)
-                    results = cache_pull(cache, ignore: options.delete(:cache_ignore))
+                    results = if cache
+                                  cache_pull(File.expand_path(cache),
+                                             ignore: options[:cache_ignore])
+                              else
+                                  require "autoproj/cli/ci"
+                                  cli = CI.new
+                                  cli.load_report(options[:report],
+                                                  "cache_pull_report")["packages"]
+                              end
+
                     pulled_packages = results
                                       .map { |name, pkg| name if pkg["cached"] }
                                       .compact
@@ -30,6 +38,29 @@ module Autoproj
                 args << "--color=#{options[:color] ? 't' : 'f'}"
                 Process.exec(Gem.ruby, $PROGRAM_NAME, "build",
                              "--interactive=f", *args, *not_args)
+            end
+
+            desc "osdeps [ARGS]", "Just like autoproj osdeps, but only selects "\
+                                  "what was not pulled from cache"
+            option :report, type: "string", default: "cache-pull.json",
+                            desc: "a file which describes what has been pulled"
+            def osdeps(*args)
+                require "autoproj/cli/ci"
+                cli = CI.new
+                results =
+                    cli.load_report(options[:report], "cache_pull_report")["packages"]
+
+                not_pulled_packages = results
+                                      .map { |name, pkg| name unless pkg["cached"] }
+                                      .compact
+
+                return if not_pulled_packages.empty?
+
+                Autoproj::CLI::Base.validate_options(args, options)
+                args << "--progress=#{options[:progress] ? 't' : 'f'}"
+                args << "--color=#{options[:color] ? 't' : 'f'}"
+                Process.exec(Gem.ruby, $PROGRAM_NAME, "osdeps",
+                             "--interactive=f", *args, *not_pulled_packages)
             end
 
             desc "test [ARGS]", "Like autoproj test, but selects only packages "\

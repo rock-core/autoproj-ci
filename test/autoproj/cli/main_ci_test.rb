@@ -13,6 +13,93 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
             @cli = CI.new(@ws)
         end
 
+        def make_cache_pull(packages = {})
+            File.open(File.join(@ws.root_dir, "cache-pull.json"), "w") do |io|
+                JSON.dump(
+                    {
+                        "cache_pull_report" => {
+                            "packages" => packages
+                        }
+                    }, io
+                )
+            end
+        end
+
+        describe "#build" do
+            it "uses an existing cache pull report" do
+                report = {
+                    "pulled" => { "cached" => true }
+                }
+                make_cache_pull(report)
+                flexmock(Process)
+                    .should_receive(:exec).once
+                    .with(Gem.ruby, $PROGRAM_NAME, "build", "--interactive=f",
+                          "--progress=f", "--color=f", "--not", "pulled")
+
+                Dir.chdir(@ws.root_dir) do
+                    MainCI.start(%w[build])
+                end
+            end
+
+            it "pulls cache if --cache is passed even if a report exists" do
+                report = {
+                    "pulled" => { "cached" => true }
+                }
+                make_cache_pull
+                flexmock(MainCI)
+                    .new_instances
+                    .should_receive(:cache_pull)
+                    .with("/var/cache/autoproj", ignore: [])
+                    .and_return(report)
+
+                flexmock(Process)
+                    .should_receive(:exec).once
+                    .with(Gem.ruby, $PROGRAM_NAME, "build", "--interactive=f",
+                          "--progress=f", "--color=f", "--not", "pulled")
+
+                Dir.chdir(@ws.root_dir) do
+                    MainCI.start(%w[build --cache /var/cache/autoproj])
+                end
+            end
+        end
+
+        describe "#osdeps" do
+            it "runs osdeps with the packages that were not pulled" do
+                make_cache_pull(
+                    {
+                        "pulled" => { "cached" => true },
+                        "not_pulled" => { "cached" => false }
+                    }
+                )
+                flexmock(Process)
+                    .should_receive(:exec).once
+                    .with(Gem.ruby, $PROGRAM_NAME, "osdeps",
+                          "--interactive=f", "--progress=f", "--color=f", "not_pulled")
+                Dir.chdir(@ws.root_dir) do
+                    MainCI.start(%w[osdeps])
+                end
+            end
+
+            it "does nothing if report doesn't exist" do
+                flexmock(Process).should_receive(:exec).never
+                Dir.chdir(@ws.root_dir) do
+                    MainCI.start(%w[osdeps])
+                end
+            end
+
+            it "does nothing if there's nothing to build" do
+                make_cache_pull(
+                    {
+                        "pulled" => { "cached" => true }
+                    }
+                )
+                flexmock(Process).should_receive(:exec).never
+                Dir.chdir(@ws.root_dir) do
+                    MainCI.start(%w[osdeps])
+                end
+            end
+        end
+
         describe "#test" do
             it "filters out cached packages" do
                 report = {
