@@ -33,7 +33,7 @@ module Autoproj
             def build(*args)
                 if (cache = options[:cache])
                     Autoproj.warn "ci build: option --cache is deprecated, use "\
-                                  "'ci cache-pull' explicitily instead"
+                                  "'ci cache-pull' explicitly instead"
                 end
 
                 report = options[:report]
