@@ -10,9 +10,7 @@ Metrics/AbcSize:
 Metrics/CyclomaticComplexity:
   Exclude:
   - lib/autoproj/cli/ci.rb
-  - lib/autoproj/cli/main_ci.rb
 
 Metrics/PerceivedComplexity:
   Exclude:
   - lib/autoproj/cli/ci.rb
-  - lib/autoproj/cli/main_ci.rb

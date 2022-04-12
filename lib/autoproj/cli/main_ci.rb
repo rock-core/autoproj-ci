@@ -7,6 +7,22 @@ module Autoproj
     module CLI
         # CLI interface for autoproj-ci
         class MainCI < StandaloneCI
+            no_commands do
+                def cache_pull_or_load_report(cache_dir, report_path, ignore: [])
+                    if cache_dir
+                        return cache_pull(File.expand_path(cache_dir), ignore: ignore)
+                    end
+
+                    require "autoproj/cli/ci"
+                    cli = CI.new
+                    cli.load_report(report_path, "cache_pull_report")["packages"]
+                end
+
+                def pulled_packages(cache_report)
+                    cache_report.map { |name, pkg| name if pkg["cached"] }.compact
+                end
+            end
+
             desc "build [ARGS]", "Just like autoproj build, but can use a build cache"
             option :cache, type: "string",
                            desc: "path to the build cache"
@@ -15,22 +31,21 @@ module Autoproj
             option :report, type: "string", default: "cache-pull.json",
                             desc: "a file which describes what has been pulled"
             def build(*args)
-                if (cache = options[:cache]) || File.exist?(options[:report])
+                if (cache = options[:cache])
+                    Autoproj.warn "ci build: option --cache is deprecated, use "\
+                                  "'ci cache-pull' explicitily instead"
+                end
+
+                report = options[:report]
+                if cache || File.exist?(report)
                     require "autoproj/cli/base"
                     Autoproj::CLI::Base.validate_options(args, options)
-                    results = if cache
-                                  cache_pull(File.expand_path(cache),
-                                             ignore: options[:cache_ignore])
-                              else
-                                  require "autoproj/cli/ci"
-                                  cli = CI.new
-                                  cli.load_report(options[:report],
-                                                  "cache_pull_report")["packages"]
-                              end
 
-                    pulled_packages = results
-                                      .map { |name, pkg| name if pkg["cached"] }
-                                      .compact
+                    pulled_packages = self.pulled_packages(
+                        cache_pull_or_load_report(
+                            cache, report, ignore: options[:cache_ignore]
+                        )
+                    )
                     not_args = ["--not", *pulled_packages] unless pulled_packages.empty?
                 end
 
@@ -142,7 +157,7 @@ module Autoproj
                 # options[:ignore] is not set if we call from another
                 # command, e.g. build
                 ignore += (options.delete(:ignore) || [])
-                results = cli.cache_pull(*dir, ignore: ignore, **options)
+                results = cli.cache_pull(*dir, ignore: ignore)
 
                 if report && !report.empty?
                     File.open(report, "w") do |io|
