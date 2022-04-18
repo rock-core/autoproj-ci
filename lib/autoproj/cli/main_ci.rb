@@ -26,10 +26,15 @@ module Autoproj
                     not_args = ["--not", *pulled_packages] unless pulled_packages.empty?
                 end
 
+
                 args << "--progress=#{options[:progress] ? 't' : 'f'}"
                 args << "--color=#{options[:color] ? 't' : 'f'}"
-                Process.exec(Gem.ruby, $PROGRAM_NAME, "build",
-                             "--interactive=f", *args, *not_args)
+                cmdline = [
+                    Gem.ruby, $PROGRAM_NAME, "build", "--interactive=f",
+                    *args, *not_args
+                ]
+                puts "Executing: #{cmdline.inspect}"
+                Process.exec(*cmdline)
             end
 
             desc "test [ARGS]", "Like autoproj test, but selects only packages "\
