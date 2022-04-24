@@ -26,7 +26,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
         end
 
         describe "#build" do
-            it "uses an existing cache pull report" do
+            it "uses an existing cache pull report by default" do
                 report = {
                     "pulled" => { "cached" => true }
                 }
@@ -38,6 +38,25 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
 
                 Dir.chdir(@ws.root_dir) do
                     MainCI.start(%w[build])
+                end
+            end
+
+            it "runs a full build if a pull report does not exist" do
+                flexmock(Process)
+                    .should_receive(:exec).once
+                    .with(Gem.ruby, $PROGRAM_NAME, "build", "--interactive=f",
+                          "--progress=f", "--color=f")
+
+                Dir.chdir(@ws.root_dir) do
+                    MainCI.start(%w[build])
+                end
+            end
+
+            it "raises if an explicitly given report path does not exist" do
+                assert_raises(ArgumentError) do
+                    Dir.chdir(@ws.root_dir) do
+                        MainCI.start(%w[build --use-report foo.json])
+                    end
                 end
             end
 
