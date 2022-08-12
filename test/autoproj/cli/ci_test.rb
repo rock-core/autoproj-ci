@@ -8,6 +8,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
     describe CI do
         before do
             @ws = ws_create
+            FileUtils.mkdir_p @ws.log_dir
             @archive_dir = make_tmpdir
             @prefix_dir = make_tmpdir
 

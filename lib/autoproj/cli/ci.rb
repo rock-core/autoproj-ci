@@ -194,6 +194,8 @@ module Autoproj
                     glob = Dir.glob(File.join(pkg.logdir, "*"))
                     FileUtils.cp_r(glob, logs) if File.directory?(pkg.logdir)
                 end
+
+                FileUtils.cp_r ws.log_dir, File.join(logs, "autoproj")
             end
 
             def package_cache_path(dir, pkg, fingerprint: nil, memo: {})
