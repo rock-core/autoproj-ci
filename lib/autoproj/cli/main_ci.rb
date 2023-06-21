@@ -200,6 +200,8 @@ module Autoproj
                  "cache-pull"
             option :report, type: "string", default: "cache-push.json",
                             desc: "a file which describes what has been done"
+            option :ignore_failed_tests, type: "boolean", default: false,
+                                         desc: "ignore packages with failed tests"
             def cache_push(dir)
                 dir = File.expand_path(dir)
 

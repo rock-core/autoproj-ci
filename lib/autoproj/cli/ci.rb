@@ -74,7 +74,7 @@ module Autoproj
                 results
             end
 
-            def cache_push(dir)
+            def cache_push(dir, ignore_failed_tests: false)
                 packages = resolve_packages
                 metadata = consolidated_report["packages"]
 
@@ -91,6 +91,12 @@ module Autoproj
                         next
                     elsif !build_info["success"]
                         pkg.message "%s: build failed, not pushing", :magenta
+                        next
+                    elsif ignore_failed_tests &&
+                          pkg_metadata["test"] &&
+                          pkg_metadata["test"]["invoked"] &&
+                          !pkg_metadata["test"]["success"]
+                        pkg.message "%s: test failed, not pushing", :magenta
                         next
                     end
 

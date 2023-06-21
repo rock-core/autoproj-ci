@@ -337,6 +337,48 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                     File.join(@archive_dir, @pkg.name, "contents")
                 )
             end
+            it "updates packages with no tests when ignoring failed tests" do
+                make_build_report
+                make_archive("a", "TEST")
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                results = @cli.cache_push(@archive_dir, ignore_failed_tests: true)
+                assert_equal({ "a" => { "updated" => true, "fingerprint" => "TEST" } },
+                             results)
+
+                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal "prefix", File.read(
+                    File.join(@archive_dir, @pkg.name, "contents")
+                )
+            end
+            it "updates packages with tests that have not been invoked when ignoring "\
+               "failed tests" do
+                make_build_report
+                make_test_report(add: { "invoked" => false, "success" => false },
+                                 timestamp: Time.now + 2)
+                make_archive("a", "TEST")
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                results = @cli.cache_push(@archive_dir, ignore_failed_tests: true)
+                assert_equal({ "a" => { "updated" => true, "fingerprint" => "TEST" } },
+                             results)
+
+                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal "prefix", File.read(
+                    File.join(@archive_dir, @pkg.name, "contents")
+                )
+            end
+            it "ignores packages which test was not successful" do
+                make_build_report
+                make_test_report(add: { "success" => false }, timestamp: Time.now + 2)
+                make_archive("a", "TEST")
+                make_prefix(File.join(@ws.prefix_dir, @pkg.name))
+                results = @cli.cache_push(@archive_dir, ignore_failed_tests: true)
+                assert_equal({}, results)
+
+                system("tar", "xzf", "TEST", chdir: File.join(@archive_dir, @pkg.name))
+                assert_equal "archive", File.read(
+                    File.join(@archive_dir, @pkg.name, "contents")
+                )
+            end
             it "deals with race conditions on push" do
                 make_prefix(File.join(@ws.prefix_dir, @pkg.name))
                 make_build_report
