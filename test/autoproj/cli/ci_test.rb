@@ -665,6 +665,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 @paths.each do |p|
                     assert File.exist?(p)
                     assert File.exist?("#{p}.json")
+                    assert File.exist?("#{p}.logs")
                 end
                 assert_equal 4096, result
             end
@@ -677,10 +678,12 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 [@paths[1], @paths[3]].each do |p|
                     assert File.exist?(p)
                     assert File.exist?("#{p}.json")
+                    assert File.exist?("#{p}.logs")
                 end
                 [@paths[0], @paths[2]].each do |p|
                     refute File.exist?(p)
                     refute File.exist?("#{p}.json")
+                    refute File.exist?("#{p}.logs")
                 end
                 assert_equal 2048, result
             end
@@ -691,6 +694,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                     io.write " " * size
                 end
                 FileUtils.touch "#{path}.json"
+                FileUtils.touch "#{path}.logs"
                 path
             end
         end
