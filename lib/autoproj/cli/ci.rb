@@ -337,6 +337,7 @@ module Autoproj
 
                     FileUtils.rm_f path
                     FileUtils.rm_f "#{path}.json"
+                    FileUtils.rm_f "#{path}.logs"
                     total_size -= stat.size
                 end
 
