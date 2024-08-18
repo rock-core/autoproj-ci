@@ -495,10 +495,10 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
             end
 
             consolidated_report_single_behavior(
-                "import", report_path_accessor: ->(ws) { ws.import_report_path }
+                "import", report_path_accessor: lambda(&:import_report_path)
             )
             consolidated_report_single_behavior(
-                "build", report_path_accessor: ->(ws) { ws.build_report_path }
+                "build", report_path_accessor: lambda(&:build_report_path)
             )
             consolidated_report_single_behavior(
                 "test", report_path_accessor: ->(ws) { ws.utility_report_path("test") }
