@@ -19,6 +19,8 @@ module Autoproj
                    type: :string, default: nil
             def rebuild_root(config_dir, cache_root, output)
                 dir = Dir.mktmpdir
+                FileUtils.chmod 0755, dir
+
                 Autoproj::CI::Rebuild.prepare_synthetic_buildroot(
                     File.join(config_dir, "installation-manifest"),
                     File.join(config_dir, "versions.yml"),
