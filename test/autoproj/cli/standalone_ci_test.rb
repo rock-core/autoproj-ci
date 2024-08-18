@@ -35,7 +35,7 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 StandaloneCI.start(["rebuild-root", @fixtures_path, @cache_root, output])
 
                 contents = `tar tvf "#{output}"`.split("\n").map(&:strip)
-                root_folder = contents.find { %r{\./$}.match?(_1) }
+                root_folder = contents.find { |line| %r{\./$}.match?(line) }
                 assert root_folder, "cannot find the root folder in created tarball"
                 assert root_folder.start_with?("drwxr-xr-x"),
                        "expected #{root_folder} to have r-x permission for group and user"
