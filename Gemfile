@@ -5,6 +5,7 @@ source "https://rubygems.org"
 gem "autoproj", git: "https://github.com/rock-core/autoproj"
 group :vscode do
     gem "debase", ">= 0.2.2.beta10"
+    gem "ffi", "<= 1.16.3"
     gem "pry"
     gem "pry-byebug"
     gem "rubocop"
