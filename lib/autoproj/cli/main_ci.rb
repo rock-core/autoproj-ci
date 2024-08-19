@@ -177,7 +177,7 @@ module Autoproj
 
                 # options[:ignore] is not set if we call from another
                 # command, e.g. build
-                ignore += (options.delete(:ignore) || [])
+                ignore += options.delete(:ignore) || []
                 results = cli.cache_pull(*dir, ignore: ignore)
 
                 if report && !report.empty?

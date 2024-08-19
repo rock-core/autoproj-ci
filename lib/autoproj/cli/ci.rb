@@ -341,8 +341,10 @@ module Autoproj
                     total_size -= stat.size
                 end
 
-                Autoproj.message format("current build cache size: %.1f GB",
-                                        Float(total_size) / 1_000_000_000)
+                Autoproj.message(
+                    format("current build cache size: %<size>.1f GB",
+                           size: Float(total_size) / 1_000_000_000)
+                )
                 total_size
             end
 
