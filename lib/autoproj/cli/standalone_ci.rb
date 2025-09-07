@@ -13,6 +13,9 @@ module Autoproj
             desc "rebuild-root CONFIG_DIR CACHE_ROOT OUTPUT",
                  "creates a compressed tarball containing the build products of a "\
                  "finished build, pulled from build cache"
+            option "excluded_tags",
+                   desc: "do not include packages that have one of these tags",
+                   type: :array, default: []
             option "workspace",
                    desc: "if given, setup a minimal workspace-like structure to "\
                          "support execution in the given path",
@@ -25,7 +28,8 @@ module Autoproj
                     File.join(config_dir, "installation-manifest"),
                     File.join(config_dir, "versions.yml"),
                     cache_root,
-                    dir
+                    dir,
+                    excluded_tags: options[:excluded_tags]
                 )
 
                 if options[:workspace]

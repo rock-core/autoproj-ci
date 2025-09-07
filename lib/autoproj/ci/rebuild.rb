@@ -12,7 +12,8 @@ module Autoproj
             # The generated tarball is 'rooted' at the filesystem root, i.e. it is meant
             # to be unpacked from /
             def self.prepare_synthetic_buildroot(
-                installation_manifest_path, versions_path, cache_root_path, output_dir
+                installation_manifest_path, versions_path, cache_root_path, output_dir,
+                excluded_tags: []
             )
                 manifest = Autoproj::InstallationManifest.new(installation_manifest_path)
                 manifest.load
@@ -21,6 +22,9 @@ module Autoproj
                 versions.each do |entry|
                     name, entry = entry.first
                     next if /^pkg_set:/.match?(name)
+
+                    package = manifest.packages.fetch(name)
+                    next if excluded_tags.any? { |t| package.manifest.tags.include?(t) }
 
                     unpack_package(
                         output_dir,
