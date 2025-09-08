@@ -20,9 +20,17 @@ module Autoproj
                    desc: "if given, setup a minimal workspace-like structure to "\
                          "support execution in the given path",
                    type: :string, default: nil
+            option "pack",
+                   desc: "Whether the command should create a tarball or only the " \
+                         "workspace as-is",
+                   type: :boolean, default: true
             def rebuild_root(config_dir, cache_root, output)
-                dir = Dir.mktmpdir
-                FileUtils.chmod 0o755, dir
+                if options[:pack]
+                    dir = Dir.mktmpdir
+                    FileUtils.chmod 0o755, dir
+                else
+                    dir = File.expand_path(output)
+                end
 
                 Autoproj::CI::Rebuild.prepare_synthetic_buildroot(
                     File.join(config_dir, "installation-manifest"),
@@ -36,13 +44,17 @@ module Autoproj
                     prepare_workspace(config_dir, dir, options[:workspace])
                 end
 
-                output = File.expand_path(output)
-                unless system("tar", "caf", output, "--owner=root", "--group=root",
-                              ".", chdir: dir)
-                    raise "failed to create #{output}"
+                if options[:pack]
+                    output = File.expand_path(output)
+                    unless system("tar", "caf", output, "--owner=root", "--group=root",
+                                  ".", chdir: dir)
+                        raise "failed to create #{output}"
+                    end
                 end
             ensure
-                FileUtils.rm_rf(dir) if dir && File.directory?(dir)
+                if options[:pack]
+                    FileUtils.rm_rf(dir) if dir && File.directory?(dir)
+                end
             end
 
             desc "dpkg-filter-status STATUS_PATH [RULES]",
