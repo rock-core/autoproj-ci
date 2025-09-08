@@ -24,7 +24,10 @@ module Autoproj
                     next if /^pkg_set:/.match?(name)
 
                     package = manifest.packages.fetch(name)
-                    next if excluded_tags.any? { |t| package.manifest.tags.include?(t) }
+                    if (tag = excluded_tags.find { |t| package.manifest.tags.include?(t) })
+                        puts "Excluding #{name} as it has the '#{tag}' tag"
+                        next
+                    end
 
                     unpack_package(
                         output_dir,
