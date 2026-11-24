@@ -3,13 +3,17 @@
 source "https://rubygems.org"
 
 gem "autoproj", git: "https://github.com/rock-core/autoproj"
+
+group :lint do
+    gem "rubocop"
+    gem "rubocop-rock"
+end
+
 group :vscode do
     gem "debase", ">= 0.2.2.beta10"
     gem "ffi", "<= 1.16.3"
     gem "pry"
     gem "pry-byebug"
-    gem "rubocop"
-    gem "rubocop-rock"
     gem "ruby-debug-ide", ">= 0.6.0"
     gem "solargraph"
 end

@@ -384,7 +384,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 make_build_report
 
                 flexmock(@cli).should_receive(:system).explicitly
-                              .with("tar", "czf", any, any, any)
+                              .with("tar", "czf", any, any)
+                              .with_any_kw_args
                               .pass_thru do
                                   make_archive("a", "TEST")
                                   true
@@ -810,9 +811,9 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 JSON.dump(
                     {
                         type => {
-                            'timestamp': timestamp,
-                            'packages': {
-                                "a" => { 'invoked': true, 'success': true }.merge(add)
+                            "timestamp" => timestamp,
+                            "packages" => {
+                                "a" => { "invoked" => true, "success" => true }.merge(add)
                             }
                         }
                     }, io

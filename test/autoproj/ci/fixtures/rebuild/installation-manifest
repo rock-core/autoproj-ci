@@ -1,8 +1,28 @@
 - name: base/types
   prefix: /path/to/base/types/prefix
+  manifest:
+    authors: []
+    maintainers: []
+    rock_maintainers: []
+    dependencies: []
 - name: drivers/iodrivers_base
   prefix: /path/to/drivers/iodrivers_base/prefix
+  manifest:
+    authors: []
+    maintainers: []
+    rock_maintainers: []
+    dependencies: []
 - name: invalid/cache
   prefix: /path/to/invalid/cache/prefix
+  manifest:
+    authors: []
+    maintainers: []
+    rock_maintainers: []
+    dependencies: []
 - name: non/existent/package
   prefix: /path/to/drivers/iodrivers_base/prefix
+  manifest:
+    authors: []
+    maintainers: []
+    rock_maintainers: []
+    dependencies: []

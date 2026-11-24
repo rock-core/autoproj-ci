@@ -169,7 +169,6 @@ module Autoproj
                 dir = File.expand_path(dir)
 
                 require "autoproj/cli/ci"
-                results = nil
 
                 cli = CI.new
                 _, options = cli.validate_options(dir, self.options)
