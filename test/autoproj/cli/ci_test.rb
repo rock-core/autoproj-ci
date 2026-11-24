@@ -384,7 +384,8 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 make_build_report
 
                 flexmock(@cli).should_receive(:system).explicitly
-                              .with("tar", "czf", any, any, any)
+                              .with("tar", "czf", any, any)
+                              .with_any_kw_args
                               .pass_thru do
                                   make_archive("a", "TEST")
                                   true
