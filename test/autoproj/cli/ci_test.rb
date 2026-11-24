@@ -810,9 +810,9 @@ module Autoproj::CLI # rubocop:disable Style/ClassAndModuleChildren
                 JSON.dump(
                     {
                         type => {
-                            'timestamp': timestamp,
-                            'packages': {
-                                "a" => { 'invoked': true, 'success': true }.merge(add)
+                            "timestamp" => timestamp,
+                            "packages" => {
+                                "a" => { "invoked" => true, "success" => true }.merge(add)
                             }
                         }
                     }, io
